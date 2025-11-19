@@ -2,12 +2,13 @@
   "name": "keralahomz",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
-    "start": "next start",
-    "lint": "eslint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "eslint"
+}
+,
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "next": "^16.0.1",
