@@ -17,9 +17,11 @@ export default function LoginPage() {
 				<CardContent>
 					<Alert>
 						<p className="font-semibold">Test credentials</p>
-						<ul className="mt-1 list-inside list-disc">
+						<ul className="mt-1 list-inside list-disc text-sm">
 							<li>Agent: agent@test.com / 123456 → /dashboard/agent</li>
 							<li>Seller: seller@test.com / 123456 → /dashboard/seller</li>
+							<li>Buyer: buyer@test.com / 123456 → /dashboard/buyer</li>
+							<li>Admin: admin@test.com / 123456 → /dashboard/admin</li>
 						</ul>
 					</Alert>
 

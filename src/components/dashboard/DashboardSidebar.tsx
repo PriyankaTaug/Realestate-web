@@ -1,0 +1,117 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+
+type UserRole = 'agent' | 'admin' | 'seller' | 'buyer';
+
+interface SidebarProps {
+  userRole: UserRole;
+}
+
+const navigationConfig = {
+  agent: [
+    { name: 'Dashboard', href: '/dashboard/agent', icon: '📊' },
+    { name: 'My Listings', href: '/dashboard/agent/listings', icon: '🏠' },
+  ],
+  admin: [
+    { name: 'Dashboard', href: '/dashboard/admin', icon: '📊' },
+    { name: 'Users', href: '/dashboard/admin/users', icon: '👥' },
+    { name: 'Properties', href: '/dashboard/admin/properties', icon: '🏠' },
+    { name: 'Agents', href: '/dashboard/admin/agents', icon: '🏢' },
+    { name: 'Reports', href: '/dashboard/admin/reports', icon: '📈' },
+    { name: 'Settings', href: '/dashboard/admin/settings', icon: '⚙️' },
+  ],
+  seller: [
+    { name: 'Dashboard', href: '/dashboard/seller', icon: '📊' },
+    { name: 'My Properties', href: '/dashboard/seller/properties', icon: '🏠' },
+    { name: 'Inquiries', href: '/dashboard/seller/inquiries', icon: '💬' },
+    { name: 'Profile', href: '/dashboard/seller/profile', icon: '👤' },
+  ],
+  buyer: [
+    { name: 'Dashboard', href: '/dashboard/buyer', icon: '📊' },
+    { name: 'Saved Properties', href: '/dashboard/buyer/saved', icon: '❤️' },
+    { name: 'Search History', href: '/dashboard/buyer/history', icon: '🔍' },
+    { name: 'Appointments', href: '/dashboard/buyer/appointments', icon: '📅' },
+    { name: 'Profile', href: '/dashboard/buyer/profile', icon: '👤' },
+  ],
+};
+
+export default function DashboardSidebar({ userRole }: SidebarProps) {
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const navigation = navigationConfig[userRole];
+
+  return (
+    <>
+      {/* Mobile menu button */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="fixed top-4 left-4 z-[60] rounded-md bg-white p-2 shadow-lg"
+        >
+          <span className="sr-only">Open sidebar</span>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-[50] w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0`}>
+        
+        {/* Logo */}
+        <div className="flex h-16 items-center justify-center border-b border-neutral-200">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="inline-block rounded-md bg-emerald-600 px-2.5 py-1 text-sm font-bold leading-none text-white">KH</span>
+            <span className="text-lg font-semibold tracking-tight">KeralaHomz</span>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="mt-6 px-3">
+          <div className="space-y-1">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'text-neutral-700 hover:bg-neutral-50 hover:text-emerald-700'
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* User role badge */}
+        <div className="absolute bottom-4 left-3 right-3">
+          <div className="rounded-lg bg-neutral-100 p-3">
+            <p className="text-xs font-medium text-neutral-600">Logged in as</p>
+            <p className="text-sm font-semibold capitalize text-neutral-900">{userRole}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-[40] bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+    </>
+  );
+}

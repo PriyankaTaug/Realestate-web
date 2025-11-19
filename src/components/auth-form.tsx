@@ -19,7 +19,7 @@ const signupSchema = z
 		email: z.string().email("Enter a valid email"),
 		password: z.string().min(6, "Minimum 6 characters"),
 		confirmPassword: z.string().min(6, "Minimum 6 characters"),
-		role: z.enum(["Agent", "Seller"], { required_error: "Select a role" }),
+		role: z.enum(["Agent", "Seller", "Buyer", "Admin"], { message: "Select a role" }),
 	})
 	.refine((data) => data.password === data.confirmPassword, {
 		message: "Passwords do not match",
@@ -54,6 +54,16 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 			if (email === "seller@test.com" && password === "123456") {
 				show({ title: "Welcome back, Seller!", type: "success" });
 				router.push("/dashboard/seller");
+				return;
+			}
+			if (email === "buyer@test.com" && password === "123456") {
+				show({ title: "Welcome back, Buyer!", type: "success" });
+				router.push("/dashboard/buyer");
+				return;
+			}
+			if (email === "admin@test.com" && password === "123456") {
+				show({ title: "Welcome back, Admin!", type: "success" });
+				router.push("/dashboard/admin");
 				return;
 			}
 			show({ title: "Invalid credentials", description: "Use the test accounts shown above.", type: "error" });
@@ -95,12 +105,18 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 					</div>
 					<fieldset>
 						<legend className="mb-1 block text-sm font-medium text-neutral-700">You are</legend>
-						<div className="flex gap-4">
+						<div className="grid grid-cols-2 gap-3">
 							<label className="inline-flex items-center gap-2 text-sm text-neutral-700">
 								<input type="radio" value="Agent" {...register("role")} className="h-4 w-4 text-emerald-600 focus:ring-emerald-600" /> Agent
 							</label>
 							<label className="inline-flex items-center gap-2 text-sm text-neutral-700">
 								<input type="radio" value="Seller" {...register("role")} className="h-4 w-4 text-emerald-600 focus:ring-emerald-600" /> Seller
+							</label>
+							<label className="inline-flex items-center gap-2 text-sm text-neutral-700">
+								<input type="radio" value="Buyer" {...register("role")} className="h-4 w-4 text-emerald-600 focus:ring-emerald-600" /> Buyer
+							</label>
+							<label className="inline-flex items-center gap-2 text-sm text-neutral-700">
+								<input type="radio" value="Admin" {...register("role")} className="h-4 w-4 text-emerald-600 focus:ring-emerald-600" /> Admin
 							</label>
 						</div>
 						{errors.role && <p className="mt-1 text-xs text-rose-600">{String((errors as any).role.message)}</p>}

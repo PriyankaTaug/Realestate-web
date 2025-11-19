@@ -75,7 +75,7 @@ export default function PopularProperties() {
 							</div>
 							<div className="mt-4 flex items-center justify-between">
 								<p className="text-base font-bold text-neutral-900">{p.price}</p>
-								<Link href="#" className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Book Now</Link>
+								<Link href={`/property/${p.id}`} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">View Details</Link>
 							</div>
 						</div>
 					</div>

@@ -1,18 +1,17 @@
 import Hero from "@/components/Hero";
+import TrySearchingFor from "@/components/TrySearchingFor";
 import PopularProperties from "@/components/PopularProperties";
 import Cities from "@/components/Cities";
 import Testimonial from "@/components/Testimonial";
 import PartnersCTA from "@/components/PartnersCTA";
-import About from "@/components/About";
 
 export default function Home() {
   return (
     <main>
       <Hero />
-      <About />
+      <TrySearchingFor />
       <PopularProperties />
       <Cities />
-      <Testimonial />
       <PartnersCTA />
     </main>
   );
