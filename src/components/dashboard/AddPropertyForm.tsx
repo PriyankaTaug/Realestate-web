@@ -12,6 +12,7 @@ interface PropertyFormData {
   area: string;
   description: string;
   status: 'active' | 'pending' | 'draft';
+  image?: string;
   images: string[];
   amenities: string[];
 }
