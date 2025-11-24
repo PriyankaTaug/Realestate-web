@@ -13,10 +13,10 @@ export default function Testimonial() {
 						className="mx-auto h-18 w-18 rounded-full object-cover"
 					/>
 					<blockquote className="mt-6 text-xl font-medium leading-8 text-neutral-800">
-						“KeralaHomz was built to simplify property decisions. We combine local expertise with transparent processes so you can find the right home with confidence.”
+						“KeralaHomez was built to simplify property decisions. We combine local expertise with transparent processes so you can find the right home with confidence.”
 					</blockquote>
 					<p className="mt-4 text-sm font-semibold text-neutral-700">Anjana Varma</p>
-					<p className="text-xs text-neutral-500">Founder, KeralaHomz</p>
+					<p className="text-xs text-neutral-500">Founder, KeralaHomez</p>
 				</div>
 			</div>
 		</section>

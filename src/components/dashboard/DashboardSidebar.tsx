@@ -67,8 +67,12 @@ export default function DashboardSidebar({ userRole }: SidebarProps) {
         {/* Logo */}
         <div className="flex h-16 items-center justify-center border-b border-neutral-200">
           <Link href="/" className="flex items-center gap-2">
-            <span className="inline-block rounded-md bg-emerald-600 px-2.5 py-1 text-sm font-bold leading-none text-white">KH</span>
-            <span className="text-lg font-semibold tracking-tight">KeralaHomz</span>
+            <img
+              src="/images/kh.png"
+              alt="KeralaHomez logo"
+              className="h-8 w-8 rounded-md object-contain"
+            />
+            <span className="text-lg font-semibold tracking-tight">KeralaHomez</span>
           </Link>
         </div>
 

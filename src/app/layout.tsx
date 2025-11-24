@@ -15,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KeralaHomz — Find A House That Suits You",
+  title: "KeralaHomez — Find A House That Suits You",
   description: "Premium real estate marketplace for Kerala. Discover, compare, and book properties.",
+  icons: {
+    icon: "/images/kh.png",
+  },
 };
 
 export default function RootLayout({

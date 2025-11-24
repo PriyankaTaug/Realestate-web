@@ -7,7 +7,7 @@ import AuthLayout from "@/components/auth-layout";
 
 export default function SignupPage() {
 	return (
-		<AuthLayout title="Create your account" subtitle="Join KeralaHomz to get started">
+		<AuthLayout title="Create your account" subtitle="Join KeralaHomez to get started">
 			<Card>
 				<CardHeader>
 					<CardTitle>Sign up</CardTitle>

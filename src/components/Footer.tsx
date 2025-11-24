@@ -7,8 +7,12 @@ export default function Footer() {
 				<div className="grid grid-cols-1 gap-10 sm:grid-cols-12">
 					<div className="sm:col-span-5">
 						<div className="flex items-center gap-2">
-							<span className="inline-block rounded-md bg-emerald-600 px-2.5 py-1 text-sm font-bold leading-none text-white">KH</span>
-							<span className="text-lg font-semibold tracking-tight">KeralaHomz</span>
+							<img
+								src="/images/kh.png"
+								alt="KeralaHomez logo"
+								className="h-8 w-8 rounded-md object-contain"
+							/>
+							<span className="text-lg font-semibold tracking-tight">KeralaHomez</span>
 						</div>
 						<p className="mt-4 text-sm text-neutral-600">
 							Premium real estate marketplace for Kerala. Discover homes, explore neighborhoods, and close deals with confidence.
@@ -56,7 +60,7 @@ export default function Footer() {
 					</div>
 				</div>
 				<div className="mt-10 border-t border-neutral-200/60 pt-6">
-					<p className="text-xs text-neutral-500">© {new Date().getFullYear()} KeralaHomz. All rights reserved.</p>
+					<p className="text-xs text-neutral-500">© {new Date().getFullYear()} KeralaHomez. All rights reserved.</p>
 				</div>
 			</div>
 		</footer>

@@ -8,7 +8,7 @@ import AuthLayout from "@/components/auth-layout";
 
 export default function LoginPage() {
 	return (
-		<AuthLayout title="Welcome back" subtitle="Login to continue to KeralaHomz">
+		<AuthLayout title="Welcome back" subtitle="Login to continue to KeralaHomez">
 			<Card>
 				<CardHeader>
 					<CardTitle>Login</CardTitle>

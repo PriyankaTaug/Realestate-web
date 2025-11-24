@@ -8,7 +8,7 @@ export default function PartnersCTA() {
 				<div className="mt-10 grid items-center gap-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 sm:grid-cols-2 sm:gap-6 sm:p-10">
 					<div>
 						<h3 className="text-xl font-bold text-white sm:text-2xl">Become a real estate agent</h3>
-						<p className="mt-2 text-sm text-emerald-50">Join KeralaHomz and grow your business with verified leads and modern tools.</p>
+						<p className="mt-2 text-sm text-emerald-50">Join KeralaHomez and grow your business with verified leads and modern tools.</p>
 					</div>
 					<div className="flex justify-start sm:justify-end">
 						<Link href="#register" className="inline-flex items-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-emerald-700 shadow hover:bg-neutral-50">Register Now</Link>

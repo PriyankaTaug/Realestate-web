@@ -72,7 +72,7 @@ export default function About() {
 		<section id="about" className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
 			<div className="mx-auto max-w-3xl text-center">
 				<h2 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">About Us</h2>
-				<p className="mt-2 text-sm text-neutral-600">KeralaHomz at a glance</p>
+				<p className="mt-2 text-sm text-neutral-600">KeralaHomez at a glance</p>
 			</div>
 
 			{/* Animated stats */}
