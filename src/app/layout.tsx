@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "KeralaHomez — Find A House That Suits You",
-  description: "Premium real estate marketplace for Kerala. Discover, compare, and book properties.",
+  description: "Easy Moves,Happy Homes",
   icons: {
     icon: "/images/kh.png",
   },
