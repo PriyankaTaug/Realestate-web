@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import PropertyCard from "@/components/dashboard/PropertyCard";
 import AddPropertyModal from "@/components/dashboard/AddPropertyModal";
+import "@/api/clientConfig";
+import { PropertiesService } from "@/api/client";
+import { OpenAPI } from "@/api/client/core/OpenAPI";
+import { useToast } from "@/components/ui/toast";
 
-// Mock data for demonstration
+// Initial local sample data (used only as fallback if API returns nothing)
 const mockProperties = [
   {
     id: '1',
@@ -66,10 +70,67 @@ const mockProperties = [
 ];
 
 export default function SellerProperties() {
+  const { show } = useToast();
   const [properties, setProperties] = useState(mockProperties);
-  const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'sold' | 'draft'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'sold'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-high' | 'price-low' | 'views'>('newest');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  useEffect(() => {
+    PropertiesService.listPropertiesApiPropertiesGet(0, 50)
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Helper function to construct full image URL
+          const getImageUrl = (imagePath: string | undefined | null) => {
+            if (!imagePath) return undefined;
+            // If it's already a full URL, return as is
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+              return imagePath;
+            }
+            // Otherwise, prepend the backend base URL
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+            // Remove leading slash if present and add it properly
+            const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+            return `${baseUrl}${cleanPath}`;
+          };
+          
+          const mapped = data.map((p) => {
+            // Extract all image URLs from property_images table
+            const imageUrls = p.images && p.images.length > 0
+              ? p.images.map(img => getImageUrl(img.image_url)).filter(Boolean) as string[]
+              : [];
+            
+            // Use first image as the main image, or undefined if no images
+            const mainImage = imageUrls.length > 0 ? imageUrls[0] : undefined;
+            
+            return {
+              id: String(p.id),
+              title: p.title,
+              price: p.price,
+              location: p.location,
+              type: p.type,
+              bedrooms: p.bedrooms || undefined,
+              bathrooms: p.bathrooms || undefined,
+              area: p.area,
+              image: mainImage,
+              images: imageUrls, // Array of image URLs for carousel
+              status: p.status as any,
+              views: p.views,
+              inquiries: p.inquiries,
+              created_at: p.created_at,
+            };
+          });
+          setProperties(mapped as any);
+        }
+      })
+      .catch((err) => {
+        // Silently fail - using mock data as fallback
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Failed to load properties", err);
+        }
+        // Don't throw - component will use mockProperties from useState initial value
+      });
+  }, []);
 
   const filteredProperties = properties.filter(property => 
     filter === 'all' || property.status === filter
@@ -91,16 +152,210 @@ export default function SellerProperties() {
   });
 
   const handleDeleteProperty = async (propertyId: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setProperties(prev => prev.filter(p => p.id !== propertyId));
-    console.log('Property deleted:', propertyId);
+    try {
+      await PropertiesService.deletePropertyApiPropertiesPropertyIdDelete(Number(propertyId));
+      setProperties(prev => prev.filter(p => p.id !== propertyId));
+      console.log('Property deleted:', propertyId);
+    } catch (error) {
+      console.error('Failed to delete property', error);
+    }
   };
 
-  const handleAddProperty = (propertyData: any) => {
-    setProperties(prev => [...prev, propertyData]);
-    console.log('New property added:', propertyData);
+  const handleAddProperty = async (formData: FormData) => {
+    try {
+      // Extract and validate required fields
+      const title = formData.get('title') as string;
+      const price = formData.get('price') as string;
+      const projectName = formData.get('project_name') as string;
+      const state = formData.get('state') as string;
+      const district = formData.get('district') as string;
+      const city = formData.get('city') as string;
+      const neighborhood = formData.get('neighborhood') as string || city; // Default to city if empty
+      const type = formData.get('type') as string;
+      const listedType = formData.get('listed_type') as string;
+      const area = formData.get('area') as string || '0'; // Default to '0' if empty (backend requires it)
+      const bedrooms = formData.get('bedrooms') as string;
+      const bathrooms = formData.get('bathrooms') as string;
+      const description = formData.get('description') as string || '';
+      const amenities = formData.get('amenities') as string || '';
+      const status = formData.get('status') as string || 'active';
+
+      // Construct location string
+      const locationParts = [neighborhood, city, district, state].filter(Boolean);
+      const location = locationParts.join(', ');
+
+      // Validate required fields
+      if (!title || !price || !projectName || !state || !district || !city || !type || !listedType || !area) {
+        throw new Error('Missing required fields. Please fill in all required fields.');
+      }
+
+      // Validate price is a valid number
+      const priceNum = parseFloat(price.replace(/[₹,]/g, ''));
+      if (isNaN(priceNum) || priceNum <= 0) {
+        throw new Error('Price must be a valid positive number.');
+      }
+
+      // Get images from FormData
+      const images = formData.getAll('images') as File[];
+      if (!images || images.length === 0) {
+        throw new Error('At least one image is required.');
+      }
+
+      // Update token in OpenAPI config if available
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('kh_token');
+        if (token) {
+          OpenAPI.TOKEN = token;
+        }
+      }
+
+      // Log the form data being sent (without files)
+      console.log('Sending form data:', {
+        title,
+        price,
+        project_name: projectName,
+        location,
+        type,
+        listed_type: listedType,
+        state,
+        district,
+        city,
+        neighborhood,
+        area,
+        bedrooms,
+        bathrooms,
+        description,
+        amenities,
+        status,
+        imagesCount: images.length
+      });
+
+      // Log the API base URL for debugging
+      const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+      console.log('API Base URL:', OpenAPI.BASE);
+      console.log('Attempting to create property at:', `${OpenAPI.BASE}/api/properties/`);
+      console.log('Number of images:', images.length);
+      
+      // Verify backend is accessible before making the request
+      try {
+        const healthCheck = await fetch(`${BASE_URL}/api/health`);
+        if (!healthCheck.ok) {
+          throw new Error(`Backend health check failed: ${healthCheck.status} ${healthCheck.statusText}`);
+        }
+        console.log('Backend health check passed');
+      } catch (healthError) {
+        console.error('Backend health check error:', healthError);
+        throw new Error(`Cannot connect to backend server at ${BASE_URL}. Please ensure the backend is running on port 8000.`);
+      }
+
+      // Use the generated API client method
+      console.log('Calling API to create property...');
+      console.log('Images being sent:', images.map(img => ({ name: img.name, size: img.size, type: img.type })));
+      
+      const created = await PropertiesService.createPropertyApiPropertiesPost({
+        title,
+        price: priceNum,
+        project_name: projectName,
+        location,
+        type,
+        listed_type: listedType,
+        state,
+        district,
+        city,
+        neighborhood,
+        area,
+        status,
+        bedrooms: bedrooms ? parseInt(bedrooms) : null,
+        bathrooms: bathrooms ? parseInt(bathrooms) : null,
+        description: description || null,
+        amenities: amenities || null,
+        images: images, // Array of File/Blob objects
+      });
+      
+      console.log('API response received:', created);
+      
+      // Verify the response has required fields
+      if (!created || !created.id) {
+        throw new Error('Invalid response from server: Property ID is missing');
+      }
+      
+      // Helper function to construct full image URL
+      const getImageUrl = (imagePath: string | undefined | null) => {
+        if (!imagePath) return undefined;
+        // If it's already a full URL, return as is
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          return imagePath;
+        }
+        // Otherwise, prepend the backend base URL
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+        // Remove leading slash if present and add it properly
+        const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+        return `${baseUrl}${cleanPath}`;
+      };
+      
+      // Extract all image URLs from property_images table
+      const imageUrls = created.images && created.images.length > 0
+        ? created.images.map(img => getImageUrl(img.image_url)).filter(Boolean) as string[]
+        : [];
+      
+      // Use first image as the main image, or fallback to uploaded image preview
+      const mainImage = imageUrls.length > 0 
+        ? imageUrls[0] 
+        : (images[0] ? URL.createObjectURL(images[0]) : undefined);
+      
+      // Update the UI with the new property
+      const mapped = {
+        id: String(created.id || Date.now()),
+        title: created.title,
+        price: created.price || price,
+        location: created.location || location,
+        type: created.type || type,
+        bedrooms: created.bedrooms || (bedrooms ? parseInt(bedrooms) : undefined),
+        bathrooms: created.bathrooms || (bathrooms ? parseInt(bathrooms) : undefined),
+        area: created.area || area || undefined,
+        image: mainImage,
+        images: imageUrls, // Array of image URLs for carousel
+        status: created.status || status,
+        views: created.views || 0,
+        inquiries: created.inquiries || 0,
+        created_at: created.created_at,
+      };
+      
+      console.log('Mapped property data:', mapped);
+      setProperties(prev => [...prev, mapped as any]);
+      setShowAddModal(false);
+      console.log('New property added to state. Total properties:', properties.length + 1);
+      show({
+        title: "Property created successfully!",
+        description: `${title} has been added to your listings.`,
+        type: "success",
+      });
+    } catch (error: any) {
+      console.error('Failed to add property', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      
+      let errorMessage = 'Failed to add property. ';
+      const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+      
+      if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('Network Error'))) {
+        errorMessage += `Network error: Could not connect to backend at ${BASE_URL}. `;
+        errorMessage += 'Please ensure the backend server is running on port 8000.';
+      } else if (error instanceof Error) {
+        errorMessage += error.message;
+      } else {
+        errorMessage += 'Please check the console for details.';
+      }
+      
+      show({
+        title: "Failed to create property",
+        description: errorMessage,
+        type: "error",
+      });
+    }
   };
 
   const getStatusCount = (status: string) => {
@@ -212,26 +467,6 @@ export default function SellerProperties() {
               }`}
             >
               Active ({getStatusCount('active')})
-            </button>
-            <button
-              onClick={() => setFilter('pending')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'pending'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-              }`}
-            >
-              Pending ({getStatusCount('pending')})
-            </button>
-            <button
-              onClick={() => setFilter('draft')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === 'draft'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-              }`}
-            >
-              Draft ({getStatusCount('draft')})
             </button>
             <button
               onClick={() => setFilter('sold')}

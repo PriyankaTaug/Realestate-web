@@ -22,6 +22,7 @@ export default function SearchBar() {
 							role="tab"
 							aria-selected={activeTab === tab}
 							onClick={() => setActiveTab(tab)}
+							suppressHydrationWarning
 							className={`min-w-[6rem] snap-center rounded-full px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
 								activeTab === tab
 									? "bg-emerald-600 text-white shadow"
@@ -46,13 +47,17 @@ export default function SearchBar() {
 							<input
 								type="text"
 								placeholder="Search by city or area"
+								suppressHydrationWarning
 								className="w-full rounded-lg border border-neutral-300 bg-white px-10 py-2.5 text-sm shadow-sm placeholder:text-neutral-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
 							/>
 						</div>
 					</div>
 					<div>
 						<label className="mb-1 block text-xs font-medium text-neutral-700">Property Type</label>
-						<select className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/40">
+						<select 
+						suppressHydrationWarning
+						className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+					>
 							<option>Apartment</option>
 							<option>Villa</option>
 							<option>Independent House</option>
@@ -61,7 +66,10 @@ export default function SearchBar() {
 					</div>
 					<div>
 						<label className="mb-1 block text-xs font-medium text-neutral-700">Budget</label>
-						<select className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/40">
+						<select 
+						suppressHydrationWarning
+						className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+					>
 							<option>Below ₹50L</option>
 							<option>₹50L - ₹1Cr</option>
 							<option>₹1Cr - ₹2Cr</option>
@@ -71,6 +79,7 @@ export default function SearchBar() {
 					<div className="flex items-end">
 						<button
 							type="submit"
+							suppressHydrationWarning
 							className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
 						>
 							Search Now

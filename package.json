@@ -2,19 +2,22 @@
   "name": "keralahomz",
   "version": "0.1.0",
   "private": true,
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "eslint"
-}
-,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "api-gen": "openapi --input src/api/openapi.json --output src/api/client --client axios"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "axios": "^1.13.2",
+    "form-data": "^4.0.5",
     "next": "^16.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.65.0",
+    "react-icons": "^5.5.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -24,6 +27,7 @@
     "@types/react-dom": "^19.2.2",
     "eslint": "^9.38.0",
     "eslint-config-next": "^16.0.1",
+    "openapi-typescript-codegen": "^0.29.0",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3"
   }

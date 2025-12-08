@@ -1,61 +1,84 @@
-"use client";
+import React, { useState, useRef, ChangeEvent } from 'react';
+import { FiX, FiInfo, FiMapPin, FiHome, FiImage } from 'react-icons/fi';
 
-import { useState } from "react";
-
-interface AddPropertyModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (propertyData: any) => void;
+interface FormDataState {
+  project_name: string;
+  title: string;
+  price: string;
+  type: string;
+  listed_type: string;
+  bedrooms: string;
+  bathrooms: string;
+  area: string;
+  state: string;
+  district: string;
+  city: string;
+  neighborhood: string;
+  description: string;
+  amenities: string;
+  status: string;
 }
 
-const propertyTypes = ['House', 'Apartment', 'Villa', 'Plot', 'Commercial'];
-const furnishingOptions = ['Unfurnished', 'Semi-furnished', 'Fully-furnished'];
-const facingOptions = ['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'];
+interface AddPropertyModalProps {
+  onClose: () => void;
+  onSubmit?: (formData: FormData) => Promise<void>;
+  isOpen?: boolean;
+}
 
-export default function AddPropertyModal({ isOpen, onClose, onSubmit }: AddPropertyModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [images, setImages] = useState<string[]>([]);
+interface TabProps {
+  active: boolean;
+  onClick: () => void;
+  Icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}
+
+const Tab = ({ active, onClick, Icon, children }: TabProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex items-center px-4 py-2 border-b-2 font-medium text-sm ${
+      active
+        ? 'border-emerald-500 text-emerald-600'
+        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+    }`}
+  >
+    <Icon className="w-4 h-4 mr-2" />
+    {children}
+  </button>
+);
+
+const AddPropertyModal = ({ onClose, onSubmit, isOpen = true }: AddPropertyModalProps) => {
+  if (!isOpen) return null;
   
-  const [formData, setFormData] = useState({
+  const [activeTab, setActiveTab] = useState('basic');
+  const [images, setImages] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const tabs = ['basic', 'location', 'details', 'images'];
+  
+  const [formData, setFormData] = useState<FormDataState>({
+    project_name: '',
     title: '',
     price: '',
-    location: '',
-    type: 'House',
+    type: '',
+    listed_type: '',
     bedrooms: '',
     bathrooms: '',
     area: '',
-    plotArea: '',
+    state: '',
+    district: '',
+    city: '',
+    neighborhood: '',
     description: '',
-    yearBuilt: '',
-    furnishing: 'Unfurnished',
-    facing: 'East',
+    amenities: '',
     status: 'active'
   });
 
-  const [features, setFeatures] = useState<string[]>([]);
-  const [newFeature, setNewFeature] = useState('');
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImages(prev => [...prev, event.target!.result as string]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setImages(prev => [...prev, ...filesArray]);
     }
   };
 
@@ -63,449 +86,421 @@ export default function AddPropertyModal({ isOpen, onClose, onSubmit }: AddPrope
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const addFeature = () => {
-    if (newFeature.trim() && !features.includes(newFeature.trim())) {
-      setFeatures(prev => [...prev, newFeature.trim()]);
-      setNewFeature('');
-    }
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const removeFeature = (index: number) => {
-    setFeatures(prev => prev.filter((_, i) => i !== index));
+  const goToNextTab = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault(); // Prevent form submission
+    const currentIndex = tabs.indexOf(activeTab);
+    console.log('Current tab:', activeTab, 'Index:', currentIndex, 'Total tabs:', tabs.length);
+    if (currentIndex < tabs.length - 1) {
+      const nextTab = tabs[currentIndex + 1];
+      console.log('Moving to next tab:', nextTab);
+      setActiveTab(nextTab);
+    }
+  };
+  
+  const goToPrevTab = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault(); // Prevent form submission
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    console.log('Form submitted from tab:', activeTab);
+    
+    if (!onSubmit) return;
     
     try {
-      const propertyData = {
-        ...formData,
-        features,
-        images,
-        id: Date.now().toString(), // Generate temporary ID
-        views: 0,
-        inquiries: 0
-      };
+      setIsSubmitting(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const requiredFields = [
+        'project_name', 'title', 'price', 'type', 'listed_type',
+        'state', 'district', 'city'
+      ];
       
-      onSubmit(propertyData);
-      handleClose();
+      const missingFields = requiredFields.filter(field => !formData[field as keyof FormDataState]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      const formDataToSend = new FormData();
+      
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formDataToSend.append(key, value);
+        }
+      });
+      
+      // Always append images field, even if empty
+      if (images.length > 0) {
+        images.forEach((image) => {
+          formDataToSend.append('images', image);
+        });
+      }
+
+      console.log('Submitting form with', images.length, 'images');
+      await onSubmit(formDataToSend);
+      onClose();
     } catch (error) {
-      console.error('Error adding property:', error);
+      console.error('Error submitting form:', error);
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('An unknown error occurred while submitting the form');
+      }
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    setCurrentStep(1);
-    setFormData({
-      title: '',
-      price: '',
-      location: '',
-      type: 'House',
-      bedrooms: '',
-      bathrooms: '',
-      area: '',
-      plotArea: '',
-      description: '',
-      yearBuilt: '',
-      furnishing: 'Unfurnished',
-      facing: 'East',
-      status: 'active'
-    });
-    setFeatures([]);
-    setImages([]);
-    setNewFeature('');
-    onClose();
-  };
-
-  const nextStep = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
-  };
-
-  const isStep1Valid = formData.title && formData.price && formData.location && formData.area;
-  const isStep2Valid = true; // Optional fields
-  const isStep3Valid = images.length > 0;
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-          <div>
-            <h2 className="text-xl font-bold text-neutral-900">Add New Property</h2>
-            <p className="text-sm text-neutral-600">Step {currentStep} of 3</p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="text-neutral-400 hover:text-neutral-600 text-2xl"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="px-6 py-4 bg-neutral-50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-neutral-600">Basic Info</span>
-            <span className="text-xs text-neutral-600">Details</span>
-            <span className="text-xs text-neutral-600">Images & Features</span>
-          </div>
-          <div className="w-full bg-neutral-200 rounded-full h-2">
-            <div 
-              className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 3) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Step 1: Basic Information */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-neutral-900 mb-4">Basic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Property Title *
-                    </label>
-                    <input
-                      type="text"
-                      name="title"
-                      required
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter property title"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Price (₹) *
-                    </label>
-                    <input
-                      type="number"
-                      name="price"
-                      required
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter price"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Location *
-                    </label>
-                    <input
-                      type="text"
-                      name="location"
-                      required
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter location"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Property Type *
-                    </label>
-                    <select
-                      name="type"
-                      required
-                      value={formData.type}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      {propertyTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Built Area (sq ft) *
-                    </label>
-                    <input
-                      type="number"
-                      name="area"
-                      required
-                      value={formData.area}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Built area in sq ft"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full p-3 border border-neutral-300 rounded-lg resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="Describe your property..."
-                  />
-                </div>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'basic':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="project_name" className="block text-sm font-medium text-gray-700">Project Name *</label>
+                <input
+                  type="text"
+                  id="project_name"
+                  name="project_name"
+                  value={formData.project_name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
               </div>
-            )}
-
-            {/* Step 2: Additional Details */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-neutral-900 mb-4">Additional Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Bedrooms
-                    </label>
-                    <input
-                      type="number"
-                      name="bedrooms"
-                      min="0"
-                      value={formData.bedrooms}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Number of bedrooms"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Bathrooms
-                    </label>
-                    <input
-                      type="number"
-                      name="bathrooms"
-                      min="0"
-                      value={formData.bathrooms}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Number of bathrooms"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Plot Area (cents)
-                    </label>
-                    <input
-                      type="number"
-                      name="plotArea"
-                      step="0.1"
-                      value={formData.plotArea}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Plot area in cents"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Year Built
-                    </label>
-                    <input
-                      type="number"
-                      name="yearBuilt"
-                      min="1900"
-                      max={new Date().getFullYear()}
-                      value={formData.yearBuilt}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Year built"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Furnishing
-                    </label>
-                    <select
-                      name="furnishing"
-                      value={formData.furnishing}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      {furnishingOptions.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Facing Direction
-                    </label>
-                    <select
-                      name="facing"
-                      value={formData.facing}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      {facingOptions.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title *</label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
               </div>
-            )}
-
-            {/* Step 3: Images and Features */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Property Images *</h3>
-                  
-                  {/* Image Upload */}
-                  <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <div className="text-4xl mb-2">📷</div>
-                      <p className="text-neutral-600 mb-2">Click to upload property images</p>
-                      <p className="text-sm text-neutral-500">Support: JPG, PNG, GIF (Max 5MB each)</p>
-                    </label>
-                  </div>
-
-                  {/* Image Preview */}
-                  {images.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-neutral-700 mb-2">
-                        Uploaded Images ({images.length})
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {images.map((image, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={image}
-                              alt={`Property ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-neutral-200"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Features */}
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Features & Amenities</h3>
-                  
-                  {/* Add Feature */}
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      value={newFeature}
-                      onChange={(e) => setNewFeature(e.target.value)}
-                      className="flex-1 p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Add a feature or amenity"
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price *</label>
+                <input
+                  type="text"
+                  id="price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="type" className="block text-sm font-medium text-gray-700">Property Type *</label>
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                >
+                  <option value="">Select type</option>
+                  <option value="apartment">Apartment</option>
+                  <option value="villa">Villa</option>
+                  <option value="house">House</option>
+                  <option value="land">Land</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="listed_type" className="block text-sm font-medium text-gray-700">Listed For *</label>
+                <select
+                  id="listed_type"
+                  name="listed_type"
+                  value={formData.listed_type}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                >
+                  <option value="">Select listing type</option>
+                  <option value="sale">For Sale</option>
+                  <option value="rent">For Rent</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'location':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="state" className="block text-sm font-medium text-gray-700">State *</label>
+                <input
+                  type="text"
+                  id="state"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="district" className="block text-sm font-medium text-gray-700">District *</label>
+                <input
+                  type="text"
+                  id="district"
+                  name="district"
+                  value={formData.district}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700">City *</label>
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="neighborhood" className="block text-sm font-medium text-gray-700">Neighborhood/Landmark</label>
+                <input
+                  type="text"
+                  id="neighborhood"
+                  name="neighborhood"
+                  value={formData.neighborhood}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'details':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                <input
+                  type="number"
+                  id="bedrooms"
+                  name="bedrooms"
+                  value={formData.bedrooms}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                <input
+                  type="number"
+                  id="bathrooms"
+                  name="bathrooms"
+                  value={formData.bathrooms}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="area" className="block text-sm font-medium text-gray-700">Area (sq ft)</label>
+                <input
+                  type="text"
+                  id="area"
+                  name="area"
+                  value={formData.area}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={4}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="amenities" className="block text-sm font-medium text-gray-700">Amenities (comma-separated)</label>
+              <input
+                type="text"
+                id="amenities"
+                name="amenities"
+                value={formData.amenities}
+                onChange={handleInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="e.g., Swimming Pool, Gym, Parking"
+              />
+            </div>
+          </div>
+        );
+      
+      case 'images':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Property Images</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+              >
+                Choose Images
+              </button>
+              <p className="mt-2 text-sm text-gray-500">Select one or more images for the property</p>
+            </div>
+            
+            {images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {images.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={URL.createObjectURL(image)}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
                     />
                     <button
                       type="button"
-                      onClick={addFeature}
-                      className="bg-emerald-600 text-white px-4 py-3 rounded-lg hover:bg-emerald-700 transition-colors"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      Add
+                      <FiX className="w-4 h-4" />
                     </button>
                   </div>
-
-                  {/* Features List */}
-                  {features.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {features.map((feature, index) => (
-                        <div key={index} className="flex items-center justify-between bg-neutral-50 p-3 rounded-lg">
-                          <span className="text-neutral-700">{feature}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeFeature(index)}
-                            className="text-red-600 hover:text-red-700 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             )}
           </div>
+        );
 
-          {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-neutral-200 bg-neutral-50">
-            <div className="flex gap-3">
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors"
-                >
-                  Previous
-                </button>
-              )}
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-100 transition-colors"
+      default:
+        return null;
+    }
+  };
+
+  // Check if current tab is the last tab
+  const isLastTab = activeTab === tabs[tabs.length - 1];
+  const isFirstTab = activeTab === tabs[0];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center border-b px-6 py-4">
+          <h2 className="text-xl font-semibold">Add New Property</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <FiX className="w-6 h-6" />
+          </button>
+        </div>
+        
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px px-6 space-x-2 overflow-x-auto">
+            {tabs.map((tab) => (
+              <Tab
+                key={tab}
+                active={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                Icon={
+                  tab === 'basic' ? FiInfo :
+                  tab === 'location' ? FiMapPin :
+                  tab === 'details' ? FiHome : FiImage
+                }
               >
-                Cancel
-              </button>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'images' && images.length > 0 && ` (${images.length})`}
+              </Tab>
+            ))}
+          </nav>
+        </div>
+        
+        <div className="p-6 overflow-y-auto flex-1">
+          {renderTabContent()}
+          
+          <form onSubmit={handleSubmit}>
+            <div className="mt-8 flex justify-between">
+              <div>
+                {!isFirstTab && (
+                  <button
+                    type="button"
+                    onClick={goToPrevTab}
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  >
+                    Previous
+                  </button>
+                )}
+              </div>
               
-              {currentStep < 3 ? (
+              <div className="flex space-x-2">
+                {!isLastTab ? (
+                  <button
+                    type="button"
+                    onClick={goToNextTab}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                      isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit'}
+                  </button>
+                )}
+                
                 <button
                   type="button"
-                  onClick={nextStep}
-                  disabled={
-                    (currentStep === 1 && !isStep1Valid) ||
-                    (currentStep === 2 && !isStep2Valid)
-                  }
-                  className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={onClose}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
-                  Next
+                  Cancel
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={loading || !isStep3Valid}
-                  className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Adding...' : 'Add Property'}
-                </button>
-              )}
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default AddPropertyModal;

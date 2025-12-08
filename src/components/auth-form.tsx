@@ -5,6 +5,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import "../api/clientConfig";
+import { AuthService, OpenAPI } from "../api/client";
 
 type Mode = "login" | "signup";
 
@@ -44,34 +46,88 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 	});
 
 	async function onSubmit(values: any) {
-		if (isLogin) {
-			const { email, password } = values as LoginValues;
-			if (email === "agent@test.com" && password === "123456") {
-				show({ title: "Welcome back, Agent!", type: "success" });
-				router.push("/dashboard/agent");
+		try {
+			if (isLogin) {
+				const { email, password } = values as LoginValues;
+				
+				// Always use API for login
+				const token = await AuthService.loginApiAuthLoginPost({ email, password });
+				if (!token?.access_token) {
+					show({ title: "Login failed", description: "No token returned from server.", type: "error" });
+					return;
+				}
+				if (typeof window !== "undefined") {
+					window.localStorage.setItem("kh_token", token.access_token);
+				}
+				// Update OpenAPI client token so subsequent calls (like /me) are authenticated
+				OpenAPI.TOKEN = token.access_token;
+				// Fetch current user to know their role and route to correct dashboard
+				const me = await AuthService.readMeApiAuthMeGet();
+				const role = (me.role || "agent").toLowerCase();
+				show({ title: "Login successful", type: "success" });
+				router.push(`/dashboard/${role}`);
+				return;
+			} else {
+				const data = values as SignupValues;
+				
+				await AuthService.signupApiAuthSignupPost({
+					full_name: data.fullName,
+					email: data.email,
+					password: data.password,
+					role: data.role,
+				});
+				show({ title: "Account created", description: `Welcome ${data.fullName}!`, type: "success" });
+				router.push("/login");
+			}
+		} catch (error: any) {
+			// Handle network errors
+			if (error?.code === 'ERR_NETWORK' || error?.message?.includes('Network Error')) {
+				show({
+					title: "Connection Failed",
+					description: "Cannot connect to the backend server. Please ensure the backend is running at http://127.0.0.1:8000",
+					type: "error",
+				});
 				return;
 			}
-			if (email === "seller@test.com" && password === "123456") {
-				show({ title: "Welcome back, Seller!", type: "success" });
-				router.push("/dashboard/seller");
+			
+			// Handle validation errors
+			if (error?.status === 422 || error?.body?.detail) {
+				const detail = error.body?.detail;
+				let errorMessage = "Validation error";
+				if (Array.isArray(detail)) {
+					errorMessage = detail.map((err: any) => {
+						if (err.loc && err.msg) {
+							return `${err.loc.join('.')}: ${err.msg}`;
+						}
+						return err.msg || JSON.stringify(err);
+					}).join('; ');
+				} else if (typeof detail === 'string') {
+					errorMessage = detail;
+				}
+				show({
+					title: "Login failed",
+					description: errorMessage,
+					type: "error",
+				});
 				return;
 			}
-			if (email === "buyer@test.com" && password === "123456") {
-				show({ title: "Welcome back, Buyer!", type: "success" });
-				router.push("/dashboard/buyer");
+			
+			// Handle authentication errors
+			if (error?.status === 401) {
+				show({
+					title: "Login failed",
+					description: error?.body?.detail || "Incorrect email or password",
+					type: "error",
+				});
 				return;
 			}
-			if (email === "admin@test.com" && password === "123456") {
-				show({ title: "Welcome back, Admin!", type: "success" });
-				router.push("/dashboard/admin");
-				return;
-			}
-			show({ title: "Invalid credentials", description: "Use the test accounts shown above.", type: "error" });
-			return;
-		} else {
-			const data = values as SignupValues;
-			show({ title: "Account created", description: `Welcome ${data.fullName}!`, type: "success" });
-			router.push("/login");
+			
+			// Generic error
+			show({
+				title: "Request failed",
+				description: error?.body?.detail || error?.message || "Something went wrong, please try again.",
+				type: "error",
+			});
 		}
 	}
 

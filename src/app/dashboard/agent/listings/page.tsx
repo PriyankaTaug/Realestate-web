@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PropertyCard from "@/components/dashboard/PropertyCard";
-import AddPropertyForm from "@/components/dashboard/AddPropertyForm";
+import AddPropertyModal from "@/components/dashboard/AddPropertyModal";
+import "@/api/clientConfig";
+import { PropertiesService } from "@/api/client";
 
-// Mock data for existing properties
+// Initial local sample data (used only as fallback if API returns nothing)
 const mockListings = [
   {
     id: '1',
@@ -54,22 +56,64 @@ const mockListings = [
 ];
 
 export default function MyListings() {
-  const [listings, setListings] = useState(mockListings);
+  const [listings, setListings] = useState<any[]>(mockListings);
   const [showAddForm, setShowAddForm] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  const handleAddProperty = (newProperty: any) => {
-    const property = {
-      ...newProperty,
-      id: Date.now().toString(),
-      views: 0,
-      inquiries: 0,
-      dateAdded: new Date().toISOString().split('T')[0]
-    };
-    setListings([property, ...listings]);
-    setShowAddForm(false);
-  };
+  useEffect(() => {
+    PropertiesService.listPropertiesApiPropertiesGet(0, 50)
+        .then((data) => {
+          if (data && data.length > 0) {
+            const mapped = data.map((p) => ({
+              id: String(p.id),
+              title: p.title,
+              price: p.price,
+              location: p.location,
+              type: p.type,
+              bedrooms: p.bedrooms || undefined,
+              bathrooms: p.bathrooms || undefined,
+              area: p.area,
+              image: p.main_image || undefined,
+              images: p.images,
+              status: p.status as any,
+              views: p.views,
+              inquiries: p.inquiries,
+            }));
+            setListings(mapped as any);
+          }
+        })
+        .catch((err) => {
+          // Silently fail - using mock data as fallback
+          if (process.env.NODE_ENV === 'development') {
+            console.error("Failed to load properties", err);
+          }
+          // Don't throw - component will use mockListings from useState initial value
+        });
+  }, []);
+const handleAddProperty = async (formData: FormData) => {
+  try {
+    const response = await fetch('http://localhost:8000/api/properties', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
 
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to create property');
+    }
+
+    const result = await response.json();
+    // Handle successful response
+    console.log('Property created:', result);
+    // Refresh properties list or update UI
+  } catch (error) {
+    console.error('Error creating property:', error);
+    throw error; // This will be caught by the modal's error handling
+  }
+};
   const filteredListings = listings.filter(listing => {
     if (filter === 'all') return true;
     return listing.status === filter;
@@ -233,12 +277,11 @@ export default function MyListings() {
       )}
 
       {/* Add Property Modal */}
-      {showAddForm && (
-        <AddPropertyForm
-          onSubmit={handleAddProperty}
-          onClose={() => setShowAddForm(false)}
-        />
-      )}
+      <AddPropertyModal
+        isOpen={showAddForm}
+        onClose={() => setShowAddForm(false)}
+        onSubmit={handleAddProperty}
+      />
     </div>
   );
 }
