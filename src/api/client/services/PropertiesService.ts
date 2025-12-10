@@ -34,6 +34,8 @@ export class PropertiesService {
     }
     /**
      * Create Property
+     * Create a new property with images.
+     * Note: FastAPI expects multiple files with the same field name 'images'.
      * @param formData
      * @returns PropertyOut Successful Response
      * @throws ApiError

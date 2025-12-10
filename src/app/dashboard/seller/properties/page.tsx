@@ -156,8 +156,60 @@ export default function SellerProperties() {
       await PropertiesService.deletePropertyApiPropertiesPropertyIdDelete(Number(propertyId));
       setProperties(prev => prev.filter(p => p.id !== propertyId));
       console.log('Property deleted:', propertyId);
+      show({
+        title: "Property deleted",
+        description: "The property has been successfully deleted.",
+        type: "success",
+      });
     } catch (error) {
       console.error('Failed to delete property', error);
+      show({
+        title: "Failed to delete property",
+        description: "An error occurred while deleting the property. Please try again.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleStatusUpdate = async (propertyId: string, newStatus: 'active' | 'pending' | 'sold' | 'draft') => {
+    try {
+      // Set token if available
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('kh_token');
+        if (token) {
+          OpenAPI.TOKEN = token;
+        }
+      }
+
+      // Update property status via API
+      await PropertiesService.updatePropertyApiPropertiesPropertyIdPut(
+        Number(propertyId),
+        { status: newStatus }
+      );
+
+      // Update local state
+      setProperties(prev => 
+        prev.map(p => 
+          p.id === propertyId 
+            ? { ...p, status: newStatus }
+            : p
+        )
+      );
+
+      const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+      show({
+        title: "Status updated",
+        description: `Property status has been updated to "${statusLabel}".`,
+        type: "success",
+      });
+    } catch (error: any) {
+      console.error('Failed to update property status', error);
+      show({
+        title: "Failed to update status",
+        description: error?.message || "An error occurred while updating the property status. Please try again.",
+        type: "error",
+      });
+      throw error; // Re-throw so PropertyCard can handle it
     }
   };
 
@@ -507,6 +559,7 @@ export default function SellerProperties() {
               property={property}
               userRole="seller"
               onDelete={handleDeleteProperty}
+              onStatusUpdate={handleStatusUpdate}
             />
           ))}
         </div>

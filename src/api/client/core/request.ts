@@ -4,78 +4,7 @@
 /* eslint-disable */
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
-
-// Create a configured axios instance with proper timeout and error handling
-// This ensures all API requests have consistent configuration
-const createConfiguredAxiosClient = (): AxiosInstance => {
-    const client = axios.create({
-        timeout: 30000, // 30 seconds timeout
-        // Don't set default Content-Type - let each request set it based on its data type
-        withCredentials: false,
-    });
-
-    // Request interceptor for token injection
-    client.interceptors.request.use(
-        (config) => {
-            // Add token from localStorage if available (client-side only)
-            if (typeof window !== "undefined") {
-                try {
-                    const token = window.localStorage.getItem("kh_token");
-                    if (token && config.headers) {
-                        config.headers.Authorization = `Bearer ${token}`;
-                    }
-                } catch (e) {
-                    // localStorage might not be available
-                }
-            }
-            
-            // If FormData is present, remove any Content-Type header to let axios set it with boundary
-            // Also check for FormDataConstructor (Node.js form-data package)
-            const isFormData = config.data instanceof FormData || 
-                              (config.data && typeof (config.data as any).getHeaders === 'function');
-            
-            if (isFormData && config.headers) {
-                // Remove Content-Type to let axios/browser set it automatically with boundary
-                delete config.headers['Content-Type'];
-                delete config.headers['content-type'];
-                
-                if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                    console.log('[Interceptor] Removed Content-Type header for FormData request');
-                }
-            }
-            
-            return config;
-        },
-        (error) => {
-            return Promise.reject(error);
-        }
-    );
-
-    // Response interceptor - just pass errors through
-    // Detailed error handling and logging happens in sendRequest function
-    // This avoids duplicate logging and ensures we have full request context
-    client.interceptors.response.use(
-        (response) => response,
-        (error: AxiosError) => {
-            // Simply reject - let sendRequest handle all error logging
-            return Promise.reject(error);
-        }
-    );
-
-    return client;
-};
-
-// Use a singleton pattern to avoid creating multiple instances
-let configuredAxiosClient: AxiosInstance | null = null;
-const getConfiguredAxiosClient = (): AxiosInstance => {
-    if (!configuredAxiosClient) {
-        configuredAxiosClient = createConfiguredAxiosClient();
-    }
-    return configuredAxiosClient;
-};
-// Use browser FormData when available, fallback to Node.js form-data for SSR
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const FormDataConstructor = typeof FormData !== 'undefined' ? FormData : require('form-data');
+import FormData from 'form-data';
 
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
@@ -172,11 +101,7 @@ const getUrl = (config: OpenAPIConfig, options: ApiRequestOptions): string => {
             return substring;
         });
 
-    // Ensure BASE doesn't have trailing slash and path starts with /
-    const base = config.BASE.endsWith('/') ? config.BASE.slice(0, -1) : config.BASE;
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    
-    const url = `${base}${normalizedPath}`;
+    const url = `${config.BASE}${path}`;
     if (options.query) {
         return `${url}${getQueryString(options.query)}`;
     }
@@ -185,76 +110,25 @@ const getUrl = (config: OpenAPIConfig, options: ApiRequestOptions): string => {
 
 export const getFormData = (options: ApiRequestOptions): FormData | undefined => {
     if (options.formData) {
-        // Ensure formData is an object, not already a FormData instance
-        if (options.formData instanceof FormData || (options.formData && typeof (options.formData as any).getHeaders === 'function')) {
-            // Already a FormData instance, return as-is
-            return options.formData as FormData;
-        }
-        
-        const formData = new FormDataConstructor();
+        const formData = new FormData();
 
-        const appendFormDataValue = (key: string, value: any) => {
-            // Handle File/Blob objects directly
-            if (isBlob(value) || (typeof File !== 'undefined' && value instanceof File)) {
+        const process = (key: string, value: any) => {
+            if (isString(value) || isBlob(value)) {
                 formData.append(key, value);
-                if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                    console.log(`[FormData] Appended file: ${key}`, { 
-                        name: (value as File).name, 
-                        size: (value as File).size, 
-                        type: (value as File).type 
-                    });
-                }
-            } else if (isString(value)) {
-                formData.append(key, value);
-                if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development' && key !== 'images') {
-                    console.log(`[FormData] Appended string: ${key} = ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
-                }
-            } else if (value === null || value === undefined) {
-                // Skip null/undefined values
-                return;
-            } else if (typeof value === 'number' || typeof value === 'boolean') {
-                // Convert numbers and booleans to strings
-                formData.append(key, String(value));
-                if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                    console.log(`[FormData] Appended ${typeof value}: ${key} = ${value}`);
-                }
             } else {
-                // For other types, stringify (but this shouldn't happen for form data)
                 formData.append(key, JSON.stringify(value));
-                if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                    console.log(`[FormData] Appended JSON: ${key} = ${JSON.stringify(value).substring(0, 50)}...`);
-                }
             }
         };
-
-        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-            console.log('[FormData] Constructing FormData from:', Object.keys(options.formData));
-        }
 
         Object.entries(options.formData)
             .filter(([_, value]) => isDefined(value))
             .forEach(([key, value]) => {
                 if (Array.isArray(value)) {
-                    // For arrays, append each item with the same key (important for multiple files)
-                    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                        console.log(`[FormData] Processing array: ${key} with ${value.length} items`);
-                    }
-                    value.forEach((v, index) => {
-                        if (isDefined(v)) {
-                            appendFormDataValue(key, v);
-                        } else if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                            console.log(`[FormData] Skipping undefined item at index ${index} in array ${key}`);
-                        }
-                    });
+                    value.forEach(v => process(key, v));
                 } else {
-                    appendFormDataValue(key, value);
+                    process(key, value);
                 }
             });
-
-        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-            // Log FormData entries (note: FormData.entries() is not available in all environments)
-            console.log('[FormData] FormData constructed successfully');
-        }
 
         return formData;
     }
@@ -278,10 +152,7 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         resolve(options, config.HEADERS),
     ]);
 
-    // form-data package (Node.js) has getHeaders, browser FormData does not
-    const formHeaders = (formData && typeof (formData as any).getHeaders === 'function') 
-        ? (formData as any).getHeaders() 
-        : {}
+    const formHeaders = typeof formData?.getHeaders === 'function' && formData?.getHeaders() || {}
 
     const headers = Object.entries({
         Accept: 'application/json',
@@ -304,9 +175,7 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         headers['Authorization'] = `Basic ${credentials}`;
     }
 
-    // Only set Content-Type if formData is not present
-    // When formData is present, axios will set Content-Type automatically with boundary
-    if (!formData && options.body !== undefined) {
+    if (options.body !== undefined) {
         if (options.mediaType) {
             headers['Content-Type'] = options.mediaType;
         } else if (isBlob(options.body)) {
@@ -322,10 +191,6 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
 };
 
 export const getRequestBody = (options: ApiRequestOptions): any => {
-    // Don't return body if formData is present - they should be mutually exclusive
-    if (options.formData) {
-        return undefined;
-    }
     if (options.body) {
         return options.body;
     }
@@ -344,52 +209,15 @@ export const sendRequest = async <T>(
 ): Promise<AxiosResponse<T>> => {
     const source = axios.CancelToken.source();
 
-    // Ensure baseURL is not set when url is already absolute (starts with http:// or https://)
-    // This prevents axios from prepending baseURL to an already complete URL
-    // If axiosClient has a baseURL configured at instance level, we need to override it
-    const isAbsoluteUrl = url.startsWith('http://') || url.startsWith('https://');
-    // Ensure FormData is used when present, and body is undefined
-    let requestData = formData || body;
-    
-    // If FormData is present, ensure body is not used
-    if (formData && body) {
-        console.warn('[Request] Both formData and body are present, using formData');
-        requestData = formData;
-    }
-    
-    // Verify FormData is actually a FormData instance
-    if (formData && !(formData instanceof FormData) && typeof (formData as any).getHeaders !== 'function') {
-        console.error('[Request] formData is not a FormData instance!', typeof formData, formData);
-        throw new Error('FormData must be an instance of FormData');
-    }
-    
     const requestConfig: AxiosRequestConfig = {
         url,
         headers,
-        data: requestData,
+        data: body ?? formData,
         method: options.method,
         withCredentials: config.WITH_CREDENTIALS,
         withXSRFToken: config.CREDENTIALS === 'include' ? config.WITH_CREDENTIALS : false,
         cancelToken: source.token,
-        // When URL is absolute, set baseURL to empty string to override any instance-level baseURL
-        // When URL is relative, use config.BASE
-        baseURL: isAbsoluteUrl ? '' : config.BASE,
-        // Don't transform FormData - let axios handle it natively
-        transformRequest: formData && (formData instanceof FormData || typeof (formData as any).getHeaders === 'function')
-            ? [(data) => data] // No transformation for FormData
-            : undefined, // Use default transform for other data types
     };
-    
-    // Debug logging
-    if (formData && typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-        const isFormDataInstance = requestData instanceof FormData;
-        const isNodeFormData = requestData && typeof (requestData as any).getHeaders === 'function';
-        console.log('[Request] Sending data:', {
-            type: isFormDataInstance ? 'FormData (browser)' : isNodeFormData ? 'FormData (node)' : typeof requestData,
-            isFormData: isFormDataInstance || isNodeFormData,
-            contentType: headers['Content-Type'] || headers['content-type'] || 'not set (will be set by axios)',
-        });
-    }
 
     onCancel(() => source.cancel('The user aborted a request.'));
 
@@ -400,57 +228,6 @@ export const sendRequest = async <T>(
         if (axiosError.response) {
             return axiosError.response;
         }
-        
-        // Enhanced error logging for network errors
-        const isNetworkError = axiosError.code === 'ERR_NETWORK' || 
-                              axiosError.code === 'ECONNREFUSED' ||
-                              axiosError.code === 'ETIMEDOUT' ||
-                              axiosError.message === 'Network Error' || 
-                              (axiosError.message && axiosError.message.includes('Network Error'));
-        
-        if (isNetworkError) {
-            const debugAPI = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DEBUG_API === 'true') ||
-                            (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_DEBUG_API === 'true');
-            
-            // Log network errors if debug mode is on, otherwise log always
-            // Use requestConfig for URL info since it's guaranteed to exist
-            // Fallback to axiosError.config if available
-            const errorUrl = requestConfig.url || axiosError.config?.url || 'unknown';
-            const errorMethod = requestConfig.method || axiosError.config?.method || 'unknown';
-            const errorBaseURL = requestConfig.baseURL || axiosError.config?.baseURL || config.BASE || 'unknown';
-            
-            // Build full URL safely
-            const isAbsoluteUrl = errorUrl.startsWith('http://') || errorUrl.startsWith('https://');
-            const fullUrl = isAbsoluteUrl 
-                ? errorUrl 
-                : (errorBaseURL && errorUrl ? `${errorBaseURL}${errorUrl}` : errorUrl);
-
-            // Log error details using individual console.error calls to avoid serialization issues
-            console.error('[API Network Error]');
-            console.error('  Message:', axiosError.message || 'Unknown network error');
-            console.error('  Code:', axiosError.code || 'UNKNOWN');
-            console.error('  Method:', errorMethod);
-            console.error('  URL:', errorUrl);
-            console.error('  Base URL:', errorBaseURL);
-            console.error('  Full URL:', fullUrl);
-            
-            // Check if BASE URL is configured
-            if (!config.BASE || config.BASE.trim() === '') {
-                console.error('  Warning: API BASE URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL environment variable.');
-            }
-            
-            // Create a more descriptive error message
-            const errorMessage = `Network request failed: ${errorMethod.toUpperCase()} ${fullUrl}\n` +
-                `Error: ${axiosError.message || 'Unknown network error'}\n` +
-                `Code: ${axiosError.code || 'UNKNOWN'}\n` +
-                `Please check:\n` +
-                `1. Backend server is running at ${config.BASE || 'undefined'}\n` +
-                `2. CORS is properly configured\n` +
-                `3. Network connectivity is available`;
-            
-            console.error(errorMessage);
-        }
-        
         throw error;
     }
 };
@@ -486,42 +263,7 @@ export const catchErrorCodes = (options: ApiRequestOptions, result: ApiResult): 
 
     const error = errors[result.status];
     if (error) {
-        // For validation errors (422), include detailed error information from response body
-        let errorMessage = error;
-        
-        if (result.status === 422 && result.body) {
-            try {
-                // Try to extract validation details from the response body
-                const body = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
-                
-                // Handle FastAPI validation error format
-                if (body.detail) {
-                    if (Array.isArray(body.detail)) {
-                        // Multiple validation errors
-                        const validationErrors = body.detail.map((err: any) => {
-                            if (err.loc && err.msg) {
-                                return `${err.loc.join('.')}: ${err.msg}`;
-                            }
-                            return JSON.stringify(err);
-                        }).join('; ');
-                        errorMessage = `Validation Error: ${validationErrors}`;
-                    } else if (typeof body.detail === 'string') {
-                        errorMessage = `Validation Error: ${body.detail}`;
-                    } else {
-                        errorMessage = `Validation Error: ${JSON.stringify(body.detail)}`;
-                    }
-                } else if (body.message) {
-                    errorMessage = `Validation Error: ${body.message}`;
-                } else {
-                    errorMessage = `Validation Error: ${JSON.stringify(body)}`;
-                }
-            } catch (e) {
-                // If parsing fails, use the default error message
-                errorMessage = error;
-            }
-        }
-        
-        throw new ApiError(options, result, errorMessage);
+        throw new ApiError(options, result, error);
     }
 
     if (!result.ok) {
@@ -549,47 +291,12 @@ export const catchErrorCodes = (options: ApiRequestOptions, result: ApiResult): 
  * @returns CancelablePromise<T>
  * @throws ApiError
  */
-export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions, axiosClient: AxiosInstance = getConfiguredAxiosClient()): CancelablePromise<T> => {
+export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions, axiosClient: AxiosInstance = axios): CancelablePromise<T> => {
     return new CancelablePromise(async (resolve, reject, onCancel) => {
         try {
-            // Validate BASE URL is configured
-            if (!config.BASE || config.BASE.trim() === '') {
-                const errorMessage = 'API BASE URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL environment variable or configure OpenAPI.BASE.';
-                console.error(errorMessage);
-                reject(new Error(errorMessage));
-                return;
-            }
-
             const url = getUrl(config, options);
             const formData = getFormData(options);
             const body = getRequestBody(options);
-            
-            // Critical: If options.formData exists but getFormData returned undefined, that's an error
-            if (options.formData && !formData) {
-                console.error('[Request] options.formData was provided but getFormData returned undefined!', options.formData);
-                throw new Error('Failed to create FormData from options.formData');
-            }
-            
-            // Debug: Log what we're sending
-            if (formData && typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-                console.log('[Request] FormData created:', {
-                    isFormData: formData instanceof FormData,
-                    isNodeFormData: typeof (formData as any).getHeaders === 'function',
-                });
-                // Try to log FormData entries if possible
-                if (formData instanceof FormData) {
-                    const entries: string[] = [];
-                    try {
-                        for (const [key] of formData.entries()) {
-                            entries.push(key);
-                        }
-                        console.log('[Request] FormData keys:', entries);
-                    } catch (e) {
-                        console.log('[Request] Could not iterate FormData entries');
-                    }
-                }
-            }
-            
             const headers = await getHeaders(config, options, formData);
 
             if (!onCancel.isCancelled) {

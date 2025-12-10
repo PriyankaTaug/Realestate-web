@@ -24,11 +24,13 @@ interface PropertyCardProps {
   userRole: 'agent' | 'admin' | 'seller' | 'buyer';
   showActions?: boolean;
   onDelete?: (propertyId: string) => void;
+  onStatusUpdate?: (propertyId: string, newStatus: 'active' | 'pending' | 'sold' | 'draft') => void;
 }
 
-export default function PropertyCard({ property, userRole, showActions = true, onDelete }: PropertyCardProps) {
+export default function PropertyCard({ property, userRole, showActions = true, onDelete, onStatusUpdate }: PropertyCardProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Get images array - use images if available, fallback to single image, or default
@@ -56,6 +58,19 @@ export default function PropertyCard({ property, userRole, showActions = true, o
       console.error('Error deleting property:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: 'active' | 'pending' | 'sold' | 'draft') => {
+    if (!onStatusUpdate) return;
+    
+    setUpdatingStatus(true);
+    try {
+      await onStatusUpdate(property.id, newStatus);
+    } catch (error) {
+      console.error('Error updating property status:', error);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -204,19 +219,38 @@ export default function PropertyCard({ property, userRole, showActions = true, o
             )}
             
             {(userRole === 'seller' || userRole === 'agent') && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className={`grid gap-2 ${onStatusUpdate ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <Link 
                   href={`/dashboard/${userRole}/properties/${property.id}/edit`}
-                  className="bg-emerald-600 text-white py-2 px-3 rounded-md text-sm font-medium hover:bg-emerald-700 transition-colors text-center"
+                  className="bg-emerald-600 text-white py-1.5 px-2 rounded-md text-xs font-medium hover:bg-emerald-700 transition-colors text-center"
                 >
                   Edit
                 </Link>
                 <button 
                   onClick={() => setShowDeleteModal(true)}
-                  className="bg-red-600 text-white py-2 px-3 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                  className="bg-red-600 text-white py-1.5 px-2 rounded-md text-xs font-medium hover:bg-red-700 transition-colors"
                 >
                   Delete
                 </button>
+                {/* Mark as Sold / Mark as Active button */}
+                {onStatusUpdate && property.status !== 'sold' && (
+                  <button
+                    onClick={() => handleStatusUpdate('sold')}
+                    disabled={updatingStatus}
+                    className="bg-orange-600 text-white py-1.5 px-2 rounded-md text-xs font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updatingStatus ? '...' : 'Sold'}
+                  </button>
+                )}
+                {onStatusUpdate && property.status === 'sold' && (
+                  <button
+                    onClick={() => handleStatusUpdate('active')}
+                    disabled={updatingStatus}
+                    className="bg-green-600 text-white py-1.5 px-2 rounded-md text-xs font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updatingStatus ? '...' : 'Active'}
+                  </button>
+                )}
               </div>
             )}
             

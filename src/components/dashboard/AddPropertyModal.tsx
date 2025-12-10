@@ -345,18 +345,6 @@ const AddPropertyModal = ({ onClose, onSubmit, isOpen = true }: AddPropertyModal
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>
-            <div>
-              <label htmlFor="amenities" className="block text-sm font-medium text-gray-700">Amenities (comma-separated)</label>
-              <input
-                type="text"
-                id="amenities"
-                name="amenities"
-                value={formData.amenities}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="e.g., Swimming Pool, Gym, Parking"
-              />
-            </div>
           </div>
         );
       

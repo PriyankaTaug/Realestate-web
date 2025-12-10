@@ -1,72 +1,130 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-
-// Mock property data - in real app, this would come from API
-const mockProperty = {
-  id: '1',
-  title: 'My Family Home',
-  price: '7500000',
-  location: 'Edappally, Kochi',
-  type: 'House',
-  bedrooms: 3,
-  bathrooms: 2,
-  area: '2200',
-  plotArea: '5',
-  description: 'This beautiful family home is located in the heart of Edappally, one of Kochi\'s most sought-after residential areas. The property features spacious rooms, modern amenities, and is perfect for families looking for a comfortable living space.',
-  features: [
-    'Spacious living room',
-    'Modern kitchen with appliances',
-    'Master bedroom with attached bathroom',
-    'Covered parking for 2 cars',
-    'Beautiful garden',
-    'Close to schools and hospitals',
-    'Easy access to public transport',
-    'Peaceful neighborhood'
-  ],
-  images: [
-    'https://via.placeholder.com/800x600/e5e7eb/6b7280?text=Property+Image+1',
-    'https://via.placeholder.com/800x600/e5e7eb/6b7280?text=Property+Image+2',
-    'https://via.placeholder.com/800x600/e5e7eb/6b7280?text=Property+Image+3',
-  ],
-  yearBuilt: 2018,
-  furnishing: 'Semi-furnished',
-  facing: 'East',
-  status: 'active'
-};
+import "@/api/clientConfig";
+import { PropertiesService } from "@/api/client";
+import { OpenAPI } from "@/api/client/core/OpenAPI";
+import { useToast } from "@/components/ui/toast";
+import type { PropertyOut } from "@/api/client";
 
 const propertyTypes = ['House', 'Apartment', 'Villa', 'Plot', 'Commercial'];
-const furnishingOptions = ['Unfurnished', 'Semi-furnished', 'Fully-furnished'];
-const facingOptions = ['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'];
+const listedTypes = ['Sale', 'Rent'];
 const statusOptions = ['active', 'pending', 'sold', 'draft'];
 
 export default function EditProperty() {
   const params = useParams();
   const router = useRouter();
+  const { show } = useToast();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [property, setProperty] = useState<PropertyOut | null>(null);
   
   const [formData, setFormData] = useState({
-    title: mockProperty.title,
-    price: mockProperty.price,
-    location: mockProperty.location,
-    type: mockProperty.type,
-    bedrooms: mockProperty.bedrooms.toString(),
-    bathrooms: mockProperty.bathrooms.toString(),
-    area: mockProperty.area,
-    plotArea: mockProperty.plotArea,
-    description: mockProperty.description,
-    yearBuilt: mockProperty.yearBuilt.toString(),
-    furnishing: mockProperty.furnishing,
-    facing: mockProperty.facing,
-    status: mockProperty.status
+    title: '',
+    price: '',
+    location: '',
+    project_name: '',
+    type: '',
+    listed_type: '',
+    state: '',
+    district: '',
+    city: '',
+    neighborhood: '',
+    bedrooms: '',
+    bathrooms: '',
+    area: '',
+    description: '',
+    status: 'active',
+    amenities: ''
   });
 
-  const [features, setFeatures] = useState(mockProperty.features);
-  const [newFeature, setNewFeature] = useState('');
-  const [images, setImages] = useState<string[]>(mockProperty.images || []);
+  const [images, setImages] = useState<string[]>([]);
+
+  // Fetch property data on mount
+  useEffect(() => {
+    const fetchProperty = async () => {
+      try {
+        setFetching(true);
+        const propertyId = Number(params.id);
+        
+        if (isNaN(propertyId)) {
+          throw new Error('Invalid property ID');
+        }
+
+        // Set token if available
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('kh_token');
+          if (token) {
+            OpenAPI.TOKEN = token;
+          }
+        }
+
+        const data = await PropertiesService.getPropertyApiPropertiesPropertyIdGet(propertyId);
+        setProperty(data);
+
+        // Helper function to construct full image URL
+        const getImageUrl = (imagePath: string | undefined | null) => {
+          if (!imagePath) return undefined;
+          if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            return imagePath;
+          }
+          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+          const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+          return `${baseUrl}${cleanPath}`;
+        };
+
+        // Extract image URLs
+        const imageUrls = data.images && data.images.length > 0
+          ? data.images.map(img => getImageUrl(img.image_url)).filter(Boolean) as string[]
+          : [];
+
+        // Parse location to extract components
+        const locationParts = data.location.split(',').map(p => p.trim());
+        const neighborhood = locationParts[0] || data.neighborhood || '';
+        const city = locationParts[1] || data.city || '';
+        const district = locationParts[2] || data.district || '';
+        const state = locationParts[3] || data.state || '';
+
+        setFormData({
+          title: data.title || '',
+          price: data.price || '',
+          location: data.location || '',
+          project_name: data.project_name || '',
+          type: data.type || '',
+          listed_type: data.listed_type || '',
+          state: state,
+          district: district,
+          city: city,
+          neighborhood: neighborhood,
+          bedrooms: data.bedrooms?.toString() || '',
+          bathrooms: data.bathrooms?.toString() || '',
+          area: data.area || '',
+          description: data.description || '',
+          status: data.status || 'active',
+          amenities: data.amenities || ''
+        });
+
+        setImages(imageUrls);
+      } catch (error: any) {
+        console.error('Failed to fetch property', error);
+        show({
+          title: "Failed to load property",
+          description: error instanceof Error ? error.message : 'Could not load property details',
+          type: "error",
+        });
+        router.push('/dashboard/seller/properties');
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    if (params.id) {
+      fetchProperty();
+    }
+  }, [params.id, router, show]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -76,77 +134,150 @@ export default function EditProperty() {
     }));
   };
 
-  const addFeature = () => {
-    if (newFeature.trim() && !features.includes(newFeature.trim())) {
-      setFeatures(prev => [...prev, newFeature.trim()]);
-      setNewFeature('');
-    }
-  };
-
-  const removeFeature = (index: number) => {
-    setFeatures(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            setImages(prev => [...prev, event.target!.result as string]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const moveImage = (fromIndex: number, toIndex: number) => {
-    setImages(prev => {
-      const newImages = [...prev];
-      const [movedImage] = newImages.splice(fromIndex, 1);
-      newImages.splice(toIndex, 0, movedImage);
-      return newImages;
-    });
-  };
-
-  const setAsMainImage = (index: number) => {
-    if (index === 0) return; // Already main image
-    moveImage(index, 0);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Updated property:', { ...formData, features, images });
-    setLoading(false);
+    try {
+      const propertyId = Number(params.id);
+      
+      if (isNaN(propertyId)) {
+        throw new Error('Invalid property ID');
+      }
+
+      // Set token if available
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('kh_token');
+        if (token) {
+          OpenAPI.TOKEN = token;
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        title: formData.title || null,
+        price: formData.price || null,
+        location: formData.location || null,
+        project_name: formData.project_name || null,
+        type: formData.type || null,
+        listed_type: formData.listed_type || null,
+        state: formData.state || null,
+        district: formData.district || null,
+        city: formData.city || null,
+        neighborhood: formData.neighborhood || null,
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        area: formData.area || null,
+        description: formData.description || null,
+        status: formData.status || null,
+        amenities: formData.amenities || null,
+      };
+
+      // Remove null values to only send updated fields
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === null || updateData[key] === '') {
+          delete updateData[key];
+        }
+      });
+
+      await PropertiesService.updatePropertyApiPropertiesPropertyIdPut(
+        propertyId,
+        updateData
+      );
+
+      show({
+        title: "Property updated successfully!",
+        description: `${formData.title} has been updated.`,
+        type: "success",
+      });
     
     // Redirect back to properties list
     router.push('/dashboard/seller/properties');
+    } catch (error: any) {
+      console.error('Failed to update property', error);
+      show({
+        title: "Failed to update property",
+        description: error instanceof Error ? error.message : 'Could not update property',
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async () => {
     setLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Deleted property:', params.id);
-    setLoading(false);
+    try {
+      const propertyId = Number(params.id);
+      
+      if (isNaN(propertyId)) {
+        throw new Error('Invalid property ID');
+      }
+
+      // Set token if available
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('kh_token');
+        if (token) {
+          OpenAPI.TOKEN = token;
+        }
+      }
+
+      await PropertiesService.deletePropertyApiPropertiesPropertyIdDelete(propertyId);
+
+      show({
+        title: "Property deleted successfully!",
+        description: "The property has been removed from your listings.",
+        type: "success",
+      });
+
     setShowDeleteModal(false);
     
     // Redirect back to properties list
     router.push('/dashboard/seller/properties');
+    } catch (error: any) {
+      console.error('Failed to delete property', error);
+      show({
+        title: "Failed to delete property",
+        description: error instanceof Error ? error.message : 'Could not delete property',
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (fetching) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-neutral-600">Loading property details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-4xl mb-4">❌</div>
+            <p className="text-neutral-600 mb-4">Property not found</p>
+            <Link
+              href="/dashboard/seller/properties"
+              className="text-emerald-600 hover:text-emerald-700 text-sm font-medium px-4 py-2 border border-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors inline-block"
+            >
+              Back to Properties
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -194,30 +325,30 @@ export default function EditProperty() {
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Project Name *
+              </label>
+              <input
+                type="text"
+                name="project_name"
+                required
+                value={formData.project_name}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter project name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Price (₹) *
               </label>
               <input
-                type="number"
+                type="text"
                 name="price"
                 required
                 value={formData.price}
                 onChange={handleInputChange}
                 className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Enter price"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Location *
-              </label>
-              <input
-                type="text"
-                name="location"
-                required
-                value={formData.location}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Enter location"
               />
             </div>
             <div>
@@ -231,7 +362,25 @@ export default function EditProperty() {
                 onChange={handleInputChange}
                 className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
+                <option value="">Select type</option>
                 {propertyTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Listed Type *
+              </label>
+              <select
+                name="listed_type"
+                required
+                value={formData.listed_type}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="">Select listed type</option>
+                {listedTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
@@ -253,6 +402,82 @@ export default function EditProperty() {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Location Information */}
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Location Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Full Location *
+              </label>
+              <input
+                type="text"
+                name="location"
+                required
+                value={formData.location}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter full location"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                State *
+              </label>
+              <input
+                type="text"
+                name="state"
+                required
+                value={formData.state}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter state"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                District *
+              </label>
+              <input
+                type="text"
+                name="district"
+                required
+                value={formData.district}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter district"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                City *
+              </label>
+              <input
+                type="text"
+                name="city"
+                required
+                value={formData.city}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter city"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Neighborhood
+              </label>
+              <input
+                type="text"
+                name="neighborhood"
+                value={formData.neighborhood}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter neighborhood"
+              />
             </div>
           </div>
         </div>
@@ -291,76 +516,17 @@ export default function EditProperty() {
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Built Area (sq ft) *
+                Area (sq ft) *
               </label>
               <input
-                type="number"
+                type="text"
                 name="area"
                 required
                 value={formData.area}
                 onChange={handleInputChange}
                 className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Built area in sq ft"
+                placeholder="Area in sq ft"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Plot Area (cents)
-              </label>
-              <input
-                type="number"
-                name="plotArea"
-                step="0.1"
-                value={formData.plotArea}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Plot area in cents"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Year Built
-              </label>
-              <input
-                type="number"
-                name="yearBuilt"
-                min="1900"
-                max={new Date().getFullYear()}
-                value={formData.yearBuilt}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Year built"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Furnishing
-              </label>
-              <select
-                name="furnishing"
-                value={formData.furnishing}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                {furnishingOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Facing Direction
-              </label>
-              <select
-                name="facing"
-                value={formData.facing}
-                onChange={handleInputChange}
-                className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                {facingOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
@@ -382,155 +548,45 @@ export default function EditProperty() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">Property Images</h2>
           
-          {/* Image Upload */}
-          <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center mb-4">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-              id="image-upload-edit"
-            />
-            <label htmlFor="image-upload-edit" className="cursor-pointer">
-              <div className="text-4xl mb-2">📷</div>
-              <p className="text-neutral-600 mb-2">Click to upload property images</p>
-              <p className="text-sm text-neutral-500">Support: JPG, PNG, GIF (Max 5MB each)</p>
-            </label>
-          </div>
-
-          {/* Current Images */}
-          {images.length > 0 && (
+          {images.length > 0 ? (
             <div>
               <p className="text-sm font-medium text-neutral-700 mb-3">
                 Property Images ({images.length})
               </p>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {images.map((image, index) => (
-                  <div key={index} className="relative group">
+                  <div key={index} className="relative">
                     <img
                       src={image}
                       alt={`Property ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border border-neutral-200 cursor-pointer hover:opacity-90 transition-opacity"
+                      className="w-full h-32 object-cover rounded-lg border border-neutral-200"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/400x300/e5e7eb/6b7280?text=Property+Image';
+                      }}
                     />
-                    
-                    {/* Action Buttons */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="flex gap-1">
-                        {index !== 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setAsMainImage(index)}
-                            className="bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs hover:bg-emerald-700 transition-colors"
-                            title="Set as main image"
-                          >
-                            ⭐
-                          </button>
-                        )}
-                        {index > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => moveImage(index, index - 1)}
-                            className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs hover:bg-blue-700 transition-colors"
-                            title="Move left"
-                          >
-                            ←
-                          </button>
-                        )}
-                        {index < images.length - 1 && (
-                          <button
-                            type="button"
-                            onClick={() => moveImage(index, index + 1)}
-                            className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs hover:bg-blue-700 transition-colors"
-                            title="Move right"
-                          >
-                            →
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                          title="Remove image"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Main Image Badge */}
                     {index === 0 && (
                       <div className="absolute bottom-2 left-2 bg-emerald-600 text-white px-2 py-1 rounded text-xs font-medium">
                         Main Image
                       </div>
                     )}
-
-                    {/* Image Number */}
                     <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs">
                       {index + 1}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800 font-medium mb-1">💡 Image Management Tips:</p>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• The first image is your main property image</li>
-                  <li>• Hover over images to reorder, set as main, or remove</li>
-                  <li>• Use high-quality images for better engagement</li>
-                  <li>• Recommended: 5-10 images showing different angles</li>
-                </ul>
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium">
+                  ℹ️ Note: Images cannot be updated through this form. To update images, please delete and recreate the property listing.
+                </p>
               </div>
             </div>
-          )}
-
-          {images.length === 0 && (
+          ) : (
             <div className="text-center py-8 bg-neutral-50 rounded-lg">
               <div className="text-4xl mb-2">🏠</div>
-              <p className="text-neutral-600 mb-2">No images uploaded yet</p>
-              <p className="text-sm text-neutral-500">Add some images to showcase your property</p>
+              <p className="text-neutral-600 mb-2">No images available</p>
             </div>
           )}
-        </div>
-
-        {/* Features */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Features & Amenities</h2>
-          
-          {/* Add Feature */}
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={newFeature}
-              onChange={(e) => setNewFeature(e.target.value)}
-              className="flex-1 p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Add a feature or amenity"
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
-            />
-            <button
-              type="button"
-              onClick={addFeature}
-              className="bg-emerald-600 text-white px-4 py-3 rounded-lg hover:bg-emerald-700 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Features List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {features.map((feature, index) => (
-              <div key={index} className="flex items-center justify-between bg-neutral-50 p-3 rounded-lg">
-                <span className="text-neutral-700">{feature}</span>
-                <button
-                  type="button"
-                  onClick={() => removeFeature(index)}
-                  className="text-red-600 hover:text-red-700 text-sm"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Submit Button */}

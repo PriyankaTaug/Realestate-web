@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import "@/api/clientConfig";
+import { AuthService } from "@/api/client";
+import { OpenAPI } from "@/api/client/core/OpenAPI";
+import type { UserOut } from "@/api/client";
 
 type UserRole = 'agent' | 'admin' | 'seller' | 'buyer';
 
@@ -9,18 +14,68 @@ interface HeaderProps {
   userRole: UserRole;
 }
 
-const userNames = {
-  agent: 'John Agent',
-  admin: 'Admin User',
-  seller: 'Jane Seller',
-  buyer: 'Mike Buyer',
-};
-
 export default function DashboardHeader({ userRole }: HeaderProps) {
+  const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [user, setUser] = useState<UserOut | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const userName = userNames[userRole];
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('kh_token');
+          if (token) {
+            OpenAPI.TOKEN = token;
+            const userData = await AuthService.readMeApiAuthMeGet();
+            setUser(userData);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      // Call logout API
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('kh_token');
+        if (token) {
+          OpenAPI.TOKEN = token;
+          try {
+            await AuthService.logoutApiAuthLogoutPost();
+          } catch (error) {
+            console.error('Logout API error (non-critical):', error);
+          }
+        }
+        // Clear token from localStorage
+        localStorage.removeItem('kh_token');
+        // Clear OpenAPI token
+        OpenAPI.TOKEN = '';
+      }
+      // Redirect to login
+      router.push('/login');
+    } catch (error) {
+      console.error('Error during sign out', error);
+      // Even if logout fails, clear local storage and redirect
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('kh_token');
+        OpenAPI.TOKEN = '';
+      }
+      router.push('/login');
+    }
+  };
+
+  const userName = user?.full_name || 'User';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   return (
     <header className="sticky top-0 z-[30] h-16 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm border-b border-neutral-200">
@@ -101,9 +156,11 @@ export default function DashboardHeader({ userRole }: HeaderProps) {
                 suppressHydrationWarning
               >
                 <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-semibold">
-                  {userName.charAt(0)}
+                  {loading ? '...' : userInitial}
                 </div>
-                <span className="hidden md:block font-medium text-neutral-700">{userName}</span>
+                <span className="hidden md:block font-medium text-neutral-700">
+                  {loading ? 'Loading...' : userName}
+                </span>
                 <svg className="h-4 w-4 text-neutral-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                 </svg>
@@ -112,16 +169,20 @@ export default function DashboardHeader({ userRole }: HeaderProps) {
               {showProfile && (
                 <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                   <div className="py-1">
-                    <Link href={`/dashboard/${userRole}/profile`} className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    <Link 
+                      href={`/dashboard/${userRole}/profile`} 
+                      className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      onClick={() => setShowProfile(false)}
+                    >
                       Your Profile
                     </Link>
-                    <Link href={`/dashboard/${userRole}/settings`} className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
-                      Settings
-                    </Link>
                     <hr className="my-1" />
-                    <Link href="/login" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    <button
+                      onClick={handleSignOut}
+                      className="block w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                    >
                       Sign out
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}
