@@ -5,15 +5,17 @@ import SearchBar from "@/components/SearchBar";
 export default function Hero() {
 	return (
 		<section id="home" className="relative overflow-hidden min-h-[520px]">
-			<div className="absolute inset-0 -z-10">
+			<div className="absolute inset-0 -z-10 bg-neutral-200 dark:bg-neutral-800">
 				<Image
 					src="https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=2400&auto=format&fit=crop"
 					alt="Modern house"
 					fill
 					priority
-					className="object-cover"
+					sizes="100vw"
+					className="object-cover dark:opacity-80"
+					unoptimized={false}
 				/>
-				<div className="absolute inset-0 bg-neutral-900/35" />
+				<div className="absolute inset-0 bg-neutral-900/35 dark:bg-neutral-900/60" />
 			</div>
 
 			<div className="mx-auto max-w-7xl px-4 py-24 sm:py-28 md:py-32 lg:py-40">

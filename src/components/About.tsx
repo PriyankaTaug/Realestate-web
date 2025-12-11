@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 
 function useInView<T extends HTMLElement>(options?: IntersectionObserverInit) {
 	const ref = useRef<T | null>(null);
@@ -32,7 +33,7 @@ function AnimatedCounter({ end, prefix = "", suffix = "+", durationMs = 1200 }: 
 		return () => cancelAnimationFrame(id);
 	}, [end, durationMs, inView]);
 	return (
-		<p ref={ref} className="text-2xl font-bold text-neutral-900">
+		<p ref={ref} className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
 			{prefix}
 			{value}
 			{suffix}
@@ -52,16 +53,24 @@ function RoleCard({
 	img: string;
 }) {
 	return (
-		<div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-neutral-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
-			<div className="relative h-44 w-full bg-neutral-100 sm:h-56">
-				<img src={img} alt={title} className="h-full w-full object-cover" />
+		<div className="overflow-hidden rounded-2xl bg-white dark:bg-neutral-800 shadow-sm ring-1 ring-neutral-200/70 dark:ring-neutral-700/70 transition hover:-translate-y-0.5 hover:shadow-md">
+			<div className="relative h-44 w-full bg-neutral-100 dark:bg-neutral-700 sm:h-56">
+				<Image 
+					src={img} 
+					alt={title} 
+					fill
+					sizes="(max-width: 640px) 100vw, 33vw"
+					className="object-cover"
+					loading="lazy"
+					unoptimized={false}
+				/>
 			</div>
 			<div className="p-5">
 				<div className="flex items-center justify-between">
-					<span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{index}</span>
+					<span className="rounded-md bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{index}</span>
 				</div>
-				<h3 className="mt-3 text-base font-semibold text-neutral-900">{title}</h3>
-				<p className="mt-1 text-sm text-neutral-600">{desc}</p>
+				<h3 className="mt-3 text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h3>
+				<p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{desc}</p>
 			</div>
 		</div>
 	);
@@ -71,23 +80,23 @@ export default function About() {
 	return (
 		<section id="about" className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
 			<div className="mx-auto max-w-3xl text-center">
-				<h2 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">About Us</h2>
-				<p className="mt-2 text-sm text-neutral-600">KeralaHomez at a glance</p>
+				<h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-3xl">About Us</h2>
+				<p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">KeralaHomez at a glance</p>
 			</div>
 
 			{/* Animated stats */}
 			<div className="mx-auto mt-8 grid max-w-3xl grid-cols-1 gap-6 sm:mt-10 sm:grid-cols-3">
-				<div className="rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-neutral-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
+				<div className="rounded-xl bg-white dark:bg-neutral-800 p-6 text-center shadow-sm ring-1 ring-neutral-200/70 dark:ring-neutral-700/70 transition hover:-translate-y-0.5 hover:shadow-md">
 					<AnimatedCounter end={1200} />
-					<p className="text-sm text-neutral-600">Listed Properties</p>
+					<p className="text-sm text-neutral-600 dark:text-neutral-400">Listed Properties</p>
 				</div>
-				<div className="rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-neutral-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
+				<div className="rounded-xl bg-white dark:bg-neutral-800 p-6 text-center shadow-sm ring-1 ring-neutral-200/70 dark:ring-neutral-700/70 transition hover:-translate-y-0.5 hover:shadow-md">
 					<AnimatedCounter end={4500} />
-					<p className="text-sm text-neutral-600">Happy Customers</p>
+					<p className="text-sm text-neutral-600 dark:text-neutral-400">Happy Customers</p>
 				</div>
-				<div className="rounded-xl bg-white p-6 text-center shadow-sm ring-1 ring-neutral-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
+				<div className="rounded-xl bg-white dark:bg-neutral-800 p-6 text-center shadow-sm ring-1 ring-neutral-200/70 dark:ring-neutral-700/70 transition hover:-translate-y-0.5 hover:shadow-md">
 					<AnimatedCounter end={100} />
-					<p className="text-sm text-neutral-600">Awards</p>
+					<p className="text-sm text-neutral-600 dark:text-neutral-400">Awards</p>
 				</div>
 			</div>
 

@@ -23,7 +23,7 @@ export default function DashboardLayout({
   const userRole = getUserRole();
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 overflow-x-hidden">
       <DashboardSidebar userRole={userRole} />
       <div className="lg:pl-64">
         <DashboardHeader userRole={userRole} />
