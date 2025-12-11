@@ -1,0 +1,28 @@
+name: Build and Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      app-version:
+        description: "Version (e.g., v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get the Git tag name
+        id: tag_name
+        run: echo "::set-output name=TAG_NAME::$(echo $GITHUB_REF | cut -d '/' -f 3)"
+
+      - name: Build and Push Docker Image
+        run: |
+          docker login ghcr.io -u PriyankaTaug -p ${{ secrets.GIT_PAT }}
+          docker build --no-cache --build-arg APP_VERSION=${{ github.event.inputs.app-version }} -t ghcr.io/priyankataug/realstate-web/web:${{ github.event.inputs.app-version }} -f ./Dockerfile .
+          docker push ghcr.io/priyankataug/realstate-web/web:${{ github.event.inputs.app-version }}
+

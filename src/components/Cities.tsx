@@ -37,23 +37,31 @@ export default function Cities() {
 		<section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
 			<div className="mb-8 flex items-end justify-between">
 				<div>
-					<h2 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">Explore Properties by Cities</h2>
-					<p className="mt-2 text-sm text-neutral-600">Find homes where you love to live</p>
+					<h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-3xl">Explore Properties by Cities</h2>
+					<p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Find homes where you love to live</p>
 				</div>
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
 				{cities.map((c) => (
 					<div key={c.slug} className="group relative overflow-hidden rounded-2xl">
-						<div className="relative h-56 w-full">
-							<Image src={c.image} alt={c.name} fill className="object-cover transition duration-300 group-hover:scale-105" />
-							<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+						<div className="relative h-56 w-full bg-neutral-100 dark:bg-neutral-700">
+							<Image 
+								src={c.image} 
+								alt={c.name} 
+								fill 
+								sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+								className="object-cover transition duration-300 group-hover:scale-105" 
+								loading="lazy"
+								unoptimized={false}
+							/>
+							<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent dark:from-black/80 dark:via-black/40" />
 						</div>
 						<div className="absolute inset-0 flex flex-col justify-end p-5">
 							<h3 className="text-lg font-semibold text-white">{c.name}</h3>
 							<p className="mt-1 line-clamp-2 text-sm text-white/85">{c.desc}</p>
 							<div className="mt-3">
-								<Link href={`/cities/${c.slug}`} className="inline-flex items-center rounded-md bg-white/95 px-3 py-2 text-xs font-semibold text-neutral-900 shadow hover:bg-white">
+								<Link href={`/cities/${c.slug}`} className="inline-flex items-center rounded-md bg-white/95 dark:bg-neutral-800/95 px-3 py-2 text-xs font-semibold text-neutral-900 dark:text-neutral-100 shadow hover:bg-white dark:hover:bg-neutral-800">
 									Explore
 								</Link>
 							</div>
