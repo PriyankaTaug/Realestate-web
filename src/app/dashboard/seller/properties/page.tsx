@@ -6,8 +6,20 @@ import PropertyCard from "@/components/dashboard/PropertyCard";
 import AddPropertyModal from "@/components/dashboard/AddPropertyModal";
 import "@/api/clientConfig";
 import { PropertiesService } from "@/api/client";
+import { AuthService } from "@/api/client";
 import { OpenAPI } from "@/api/client/core/OpenAPI";
 import { useToast } from "@/components/ui/toast";
+import type { UserOut } from "@/api/client/models/UserOut";
+import { 
+  MdHome, 
+  MdCheckCircle, 
+  MdVisibility, 
+  MdAttachMoney,
+  MdAdd,
+  MdMessage,
+  MdBarChart
+} from "react-icons/md";
+import { FaHome } from "react-icons/fa";
 
 // Initial local sample data (used only as fallback if API returns nothing)
 const mockProperties = [
@@ -71,15 +83,68 @@ const mockProperties = [
 
 export default function SellerProperties() {
   const { show } = useToast();
-  const [properties, setProperties] = useState(mockProperties);
+  const [properties, setProperties] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'active' | 'sold'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'price-high' | 'price-low' | 'views'>('newest');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserOut | null>(null);
 
+  // Fetch user info first
   useEffect(() => {
-    PropertiesService.listPropertiesApiPropertiesGet(0, 50)
-      .then((data) => {
-        if (data && data.length > 0) {
+    const fetchUser = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('kh_token');
+          if (token) {
+            OpenAPI.TOKEN = token;
+            const userData = await AuthService.readMeApiAuthMeGet();
+            setUser(userData);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch properties for the logged-in seller
+  useEffect(() => {
+    const fetchProperties = async () => {
+      if (!user) return; // Wait for user to be loaded
+      
+      setLoading(true);
+      try {
+        // Set token
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('kh_token');
+          if (token) {
+            OpenAPI.TOKEN = token;
+          }
+        }
+
+        // Fetch all properties (we'll filter by owner_id on frontend)
+        const response = await PropertiesService.listPropertiesApiPropertiesGet(
+          0, 
+          100, // Get more properties to ensure we get all seller's properties
+          undefined, // bedrooms
+          undefined, // bathrooms
+          undefined, // city
+          undefined, // district
+          undefined, // state
+          undefined, // neighborhood
+          undefined, // type
+          undefined, // listed_type
+          undefined, // status (get all statuses for seller)
+        );
+        
+        const data = response.items || [];
+        
+        // Filter properties by owner_id on frontend
+        const sellerProperties = data.filter((p: any) => p.owner_id === user.id);
+        
+        if (sellerProperties.length > 0) {
           // Helper function to construct full image URL
           const getImageUrl = (imagePath: string | undefined | null) => {
             if (!imagePath) return undefined;
@@ -94,10 +159,10 @@ export default function SellerProperties() {
             return `${baseUrl}${cleanPath}`;
           };
           
-          const mapped = data.map((p) => {
+          const mapped = sellerProperties.map((p: any) => {
             // Extract all image URLs from property_images table
             const imageUrls = p.images && p.images.length > 0
-              ? p.images.map(img => getImageUrl(img.image_url)).filter(Boolean) as string[]
+              ? p.images.map((img: any) => getImageUrl(img.image_url)).filter(Boolean) as string[]
               : [];
             
             // Use first image as the main image, or undefined if no images
@@ -121,16 +186,23 @@ export default function SellerProperties() {
             };
           });
           setProperties(mapped as any);
+        } else {
+          // No properties found for this seller
+          setProperties([]);
         }
-      })
-      .catch((err) => {
-        // Silently fail - using mock data as fallback
+      } catch (err) {
+        // Silently fail - using empty array as fallback
         if (process.env.NODE_ENV === 'development') {
           console.error("Failed to load properties", err);
         }
-        // Don't throw - component will use mockProperties from useState initial value
-      });
-  }, []);
+        setProperties([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [user]);
 
   const filteredProperties = properties.filter(property => 
     filter === 'all' || property.status === filter
@@ -448,7 +520,7 @@ export default function SellerProperties() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600 text-lg">🏠</span>
+              <MdHome className="text-blue-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Total Properties</p>
@@ -459,7 +531,7 @@ export default function SellerProperties() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-600 text-lg">✅</span>
+              <MdCheckCircle className="text-green-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Active Listings</p>
@@ -470,7 +542,7 @@ export default function SellerProperties() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600 text-lg">👁️</span>
+              <MdVisibility className="text-purple-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Total Views</p>
@@ -483,7 +555,7 @@ export default function SellerProperties() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <span className="text-emerald-600 text-lg">💰</span>
+              <MdAttachMoney className="text-emerald-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Portfolio Value</p>
@@ -565,7 +637,9 @@ export default function SellerProperties() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-          <div className="text-6xl mb-4">🏠</div>
+          <div className="flex justify-center mb-4">
+            <FaHome className="text-6xl text-neutral-400" />
+          </div>
           <h3 className="text-lg font-semibold text-neutral-900 mb-2">
             No {filter !== 'all' ? filter : ''} properties found
           </h3>
@@ -596,7 +670,7 @@ export default function SellerProperties() {
               className="flex items-center gap-3 p-4 bg-white rounded-lg border border-neutral-200 hover:shadow-md transition-shadow w-full text-left"
             >
               <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <span className="text-emerald-600 text-lg">➕</span>
+                <MdAdd className="text-emerald-600 text-lg" />
               </div>
               <div>
                 <h4 className="font-medium text-neutral-900">Add New Property</h4>
@@ -608,7 +682,7 @@ export default function SellerProperties() {
               className="flex items-center gap-3 p-4 bg-white rounded-lg border border-neutral-200 hover:shadow-md transition-shadow"
             >
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 text-lg">💬</span>
+                <MdMessage className="text-blue-600 text-lg" />
               </div>
               <div>
                 <h4 className="font-medium text-neutral-900">View Inquiries</h4>
@@ -620,7 +694,7 @@ export default function SellerProperties() {
               className="flex items-center gap-3 p-4 bg-white rounded-lg border border-neutral-200 hover:shadow-md transition-shadow"
             >
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 text-lg">📊</span>
+                <MdBarChart className="text-purple-600 text-lg" />
               </div>
               <div>
                 <h4 className="font-medium text-neutral-900">View Dashboard</h4>

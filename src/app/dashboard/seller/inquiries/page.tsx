@@ -1,101 +1,142 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { 
+  MdCheckCircle, 
+  MdNotifications,
+  MdAccessTime,
+  MdMailOutline
+} from "react-icons/md";
+import { FaEnvelope, FaPhone, FaSpinner } from "react-icons/fa";
+import "@/api/clientConfig";
+import { AuthService } from "@/api/client";
+import { OpenAPI } from "@/api/client/core/OpenAPI";
+import { apiClient } from "@/api/clientConfig";
+import type { UserOut } from "@/api/client/models/UserOut";
 
-// Mock data for demonstration
-const mockInquiries = [
-  {
-    id: '1',
-    propertyTitle: 'My Family Home',
-    propertyId: '1',
-    buyerName: 'Rajesh Kumar',
-    buyerEmail: 'rajesh@email.com',
-    buyerPhone: '+91 9876543210',
-    message: 'Interested in scheduling a visit this weekend. Can we arrange a viewing on Saturday or Sunday?',
-    time: '2 hours ago',
-    status: 'new',
-    replies: []
-  },
-  {
-    id: '2',
-    propertyTitle: 'Investment Apartment',
-    propertyId: '2',
-    buyerName: 'Priya Nair',
-    buyerEmail: 'priya@email.com',
-    buyerPhone: '+91 9876543211',
-    message: 'Can you provide more details about the parking facility? Is it covered parking?',
-    time: '5 hours ago',
-    status: 'replied',
-    replies: [
-      {
-        id: 'r1',
-        message: 'Yes, it has covered parking for 2 cars. The parking is included in the price.',
-        sender: 'seller',
-        time: '3 hours ago'
-      }
-    ]
-  },
-  {
-    id: '3',
-    propertyTitle: 'My Family Home',
-    propertyId: '1',
-    buyerName: 'Arun Menon',
-    buyerEmail: 'arun@email.com',
-    buyerPhone: '+91 9876543212',
-    message: 'Is the price negotiable? I am genuinely interested in this property.',
-    time: '1 day ago',
-    status: 'new',
-    replies: []
-  },
-  {
-    id: '4',
-    propertyTitle: 'Investment Apartment',
-    propertyId: '2',
-    buyerName: 'Meera Singh',
-    buyerEmail: 'meera@email.com',
-    buyerPhone: '+91 9876543213',
-    message: 'What is the maintenance cost per month? Are there any pending dues?',
-    time: '2 days ago',
-    status: 'new',
-    replies: []
-  }
-];
+// Helper function to format time ago
+const formatTimeAgo = (date: string | Date): string => {
+  const now = new Date();
+  const past = new Date(date);
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  return `${Math.floor(diffInSeconds / 604800)} weeks ago`;
+};
+
+interface Inquiry {
+  id: string;
+  propertyTitle: string;
+  propertyId: number;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string | null;
+  message: string | null;
+  status: 'new' | 'replied' | 'closed';
+  created_at: string | Date;
+}
 
 export default function SellerInquiries() {
-  const [inquiries, setInquiries] = useState(mockInquiries);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserOut | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [filter, setFilter] = useState<'all' | 'new' | 'replied'>('all');
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+
+  // Fetch user and inquiries
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Set token
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('kh_token');
+          if (token) {
+            OpenAPI.TOKEN = token;
+            
+            // Fetch user
+            const userData = await AuthService.readMeApiAuthMeGet();
+            setUser(userData);
+            
+            // Fetch inquiries for this seller
+            const response = await apiClient.get(`/api/inquiries/?seller_id=${userData.id}&limit=100`);
+            
+            if (response.data && response.data.items) {
+              const mappedInquiries: Inquiry[] = response.data.items.map((inq: any) => ({
+                id: String(inq.id),
+                propertyTitle: inq.property?.title || 'Unknown Property',
+                propertyId: inq.property_id,
+                buyerName: inq.buyer_name,
+                buyerEmail: inq.buyer_email,
+                buyerPhone: inq.buyer_phone,
+                message: inq.message || '',
+                status: inq.status || 'new',
+                created_at: inq.created_at
+              }));
+              
+              setInquiries(mappedInquiries);
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Failed to load inquiries', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredInquiries = inquiries.filter(inquiry => 
     filter === 'all' || inquiry.status === filter
   );
 
-  const handleReply = (inquiryId: string) => {
+  const handleReply = async (inquiryId: string) => {
     if (!replyMessage.trim()) return;
 
-    setInquiries(prev => prev.map(inquiry => {
-      if (inquiry.id === inquiryId) {
-        return {
-          ...inquiry,
-          status: 'replied' as const,
-          replies: [
-            ...inquiry.replies,
-            {
-              id: `r${Date.now()}`,
-              message: replyMessage,
-              sender: 'seller' as const,
-              time: 'Just now'
-            }
-          ]
-        };
-      }
-      return inquiry;
-    }));
+    const inquiry = inquiries.find(i => i.id === inquiryId);
+    if (!inquiry) return;
 
-    setReplyMessage('');
-    setSelectedInquiry(null);
+    try {
+      setUpdatingStatus(inquiryId);
+      
+      // Send reply email to buyer and update inquiry status
+      await apiClient.post(`/api/inquiries/${inquiryId}/reply`, {
+        message: replyMessage
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Update local state
+      setInquiries(prev => prev.map(inq => {
+        if (inq.id === inquiryId) {
+          return {
+            ...inq,
+            status: 'replied' as const
+          };
+        }
+        return inq;
+      }));
+
+      setReplyMessage('');
+      setSelectedInquiry(null);
+      alert('Reply sent successfully to buyer!');
+    } catch (error: any) {
+      console.error('Failed to send reply', error);
+      alert(error.response?.data?.detail || 'Failed to send reply. Please try again.');
+    } finally {
+      setUpdatingStatus(null);
+    }
   };
 
   return (
@@ -119,7 +160,7 @@ export default function SellerInquiries() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600 text-lg">📬</span>
+              <MdMailOutline className="text-blue-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Total Inquiries</p>
@@ -130,7 +171,7 @@ export default function SellerInquiries() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-green-600 text-lg">✅</span>
+              <MdCheckCircle className="text-green-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">Replied</p>
@@ -143,7 +184,7 @@ export default function SellerInquiries() {
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <span className="text-orange-600 text-lg">🔔</span>
+              <MdNotifications className="text-orange-600 text-lg" />
             </div>
             <div>
               <p className="text-sm text-neutral-600">New</p>
@@ -192,8 +233,14 @@ export default function SellerInquiries() {
       </div>
 
       {/* Inquiries List */}
-      <div className="space-y-4">
-        {filteredInquiries.map((inquiry) => (
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
+          <FaSpinner className="text-4xl text-emerald-600 animate-spin mx-auto mb-4" />
+          <p className="text-neutral-600">Loading inquiries...</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredInquiries.map((inquiry) => (
           <div key={inquiry.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-start gap-4">
@@ -217,9 +264,15 @@ export default function SellerInquiries() {
                     Re: <span className="font-medium">{inquiry.propertyTitle}</span>
                   </p>
                   <div className="flex items-center gap-4 text-xs text-neutral-500">
-                    <span>📧 {inquiry.buyerEmail}</span>
-                    <span>📞 {inquiry.buyerPhone}</span>
-                    <span>🕒 {inquiry.time}</span>
+                    <span className="flex items-center gap-1">
+                      <FaEnvelope className="text-xs" /> {inquiry.buyerEmail}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FaPhone className="text-xs" /> {inquiry.buyerPhone}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MdAccessTime className="text-xs" /> {formatTimeAgo(inquiry.created_at)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -229,20 +282,6 @@ export default function SellerInquiries() {
               <p className="text-neutral-700">{inquiry.message}</p>
             </div>
 
-            {/* Replies */}
-            {inquiry.replies.length > 0 && (
-              <div className="space-y-3 mb-4">
-                {inquiry.replies.map((reply) => (
-                  <div key={reply.id} className="bg-emerald-50 rounded-lg p-4 ml-8">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium text-emerald-700">Your Reply</span>
-                      <span className="text-xs text-emerald-600">{reply.time}</span>
-                    </div>
-                    <p className="text-neutral-700">{reply.message}</p>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {/* Reply Form */}
             {selectedInquiry === inquiry.id ? (
@@ -255,12 +294,20 @@ export default function SellerInquiries() {
                   rows={3}
                 />
                 <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => handleReply(inquiry.id)}
-                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
-                  >
-                    Send Reply
-                  </button>
+                <button
+                  onClick={() => handleReply(inquiry.id)}
+                  disabled={updatingStatus === inquiry.id}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {updatingStatus === inquiry.id ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Send Reply'
+                  )}
+                </button>
                   <button
                     onClick={() => {
                       setSelectedInquiry(null);
@@ -280,27 +327,18 @@ export default function SellerInquiries() {
                 >
                   Reply
                 </button>
-                <a
-                  href={`tel:${inquiry.buyerPhone}`}
-                  className="border border-neutral-300 text-neutral-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
-                >
-                  Call
-                </a>
-                <a
-                  href={`mailto:${inquiry.buyerEmail}`}
-                  className="border border-neutral-300 text-neutral-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
-                >
-                  Email
-                </a>
               </div>
             )}
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
-      {filteredInquiries.length === 0 && (
+      {!loading && filteredInquiries.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-          <div className="text-6xl mb-4">📭</div>
+          <div className="flex justify-center mb-4">
+            <MdMailOutline className="text-6xl text-neutral-400" />
+          </div>
           <h3 className="text-lg font-semibold text-neutral-900 mb-2">
             No {filter !== 'all' ? filter : ''} inquiries found
           </h3>

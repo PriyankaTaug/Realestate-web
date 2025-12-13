@@ -1,9 +1,11 @@
+import { ReactNode } from "react";
+
 interface DashboardCardProps {
   title: string;
   value: string | number;
   change?: string;
   changeType?: 'positive' | 'negative' | 'neutral';
-  icon: string;
+  icon: ReactNode;
   description?: string;
 }
 
@@ -38,7 +40,7 @@ export default function DashboardCard({
             <p className="text-xs text-neutral-500 mt-1">{description}</p>
           )}
         </div>
-        <div className="text-4xl">{icon}</div>
+        <div className="text-4xl text-neutral-400">{icon}</div>
       </div>
     </div>
   );

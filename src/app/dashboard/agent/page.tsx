@@ -4,6 +4,12 @@ import { useState } from "react";
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import PropertyCard from "@/components/dashboard/PropertyCard";
 import PropertySearch from "@/components/dashboard/PropertySearch";
+import { 
+  MdHome, 
+  MdVisibility, 
+  MdMessage, 
+  MdHandshake 
+} from "react-icons/md";
 
 // Mock data for demonstration
 const mockProperties = [
@@ -112,7 +118,7 @@ export default function AgentDashboard() {
 					value="24"
 					change="+2 this week"
 					changeType="positive"
-					icon="🏠"
+					icon={<MdHome className="text-4xl" />}
 					description="Active properties"
 				/>
 				<DashboardCard
@@ -120,7 +126,7 @@ export default function AgentDashboard() {
 					value="1,247"
 					change="+18% from last month"
 					changeType="positive"
-					icon="👁️"
+					icon={<MdVisibility className="text-4xl" />}
 					description="Property views"
 				/>
 				<DashboardCard
@@ -128,7 +134,7 @@ export default function AgentDashboard() {
 					value="87"
 					change="+5 today"
 					changeType="positive"
-					icon="💬"
+					icon={<MdMessage className="text-4xl" />}
 					description="New inquiries"
 				/>
 				<DashboardCard
@@ -136,7 +142,7 @@ export default function AgentDashboard() {
 					value="12"
 					change="+3 this month"
 					changeType="positive"
-					icon="🤝"
+					icon={<MdHandshake className="text-4xl" />}
 					description="Successful sales"
 				/>
 			</div>

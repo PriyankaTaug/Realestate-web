@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClient } from "@/api/clientConfig";
+import { 
+  FaHome, 
+  FaBed, 
+  FaShower, 
+  FaRuler, 
+  FaEye, 
+  FaComments,
+  FaExclamationTriangle 
+} from "react-icons/fa";
 
 interface Property {
   id: string;
@@ -25,13 +35,94 @@ interface PropertyCardProps {
   showActions?: boolean;
   onDelete?: (propertyId: string) => void;
   onStatusUpdate?: (propertyId: string, newStatus: 'active' | 'pending' | 'sold' | 'draft') => void;
+  onUnsave?: (propertyId: string) => void; // Callback when property is unsaved
 }
 
-export default function PropertyCard({ property, userRole, showActions = true, onDelete, onStatusUpdate }: PropertyCardProps) {
+export default function PropertyCard({ property, userRole, showActions = true, onDelete, onStatusUpdate, onUnsave }: PropertyCardProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  // Check if property is saved (for buyers)
+  useEffect(() => {
+    if (userRole === 'buyer') {
+      checkSavedStatus();
+    }
+  }, [property.id, userRole]);
+  
+  const checkSavedStatus = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('kh_token') : null;
+      if (!token) return;
+      
+      const response = await apiClient.get(`/api/saved-properties/check/${property.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setIsSaved(response.data.is_saved);
+    } catch (error) {
+      // If not authenticated or error, assume not saved
+      setIsSaved(false);
+    }
+  };
+  
+  const handleSaveToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (userRole !== 'buyer') return;
+    
+    const token = typeof window !== 'undefined' ? localStorage.getItem('kh_token') : null;
+    if (!token) {
+      // Redirect to login or show message
+      alert('Please login to save properties');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      if (isSaved) {
+        // Unsave
+        await apiClient.delete(`/api/saved-properties/${property.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setIsSaved(false);
+        // Call onUnsave callback if provided
+        if (onUnsave) {
+          onUnsave(property.id);
+        }
+      } else {
+        // Save
+        await apiClient.post('/api/saved-properties/', 
+          { property_id: parseInt(property.id) },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        setIsSaved(true);
+      }
+    } catch (error: any) {
+      console.error('Error toggling save:', error);
+      if (error.response?.status === 401) {
+        alert('Please login to save properties');
+      } else if (error.response?.status === 400 && error.response?.data?.detail === 'Property already saved') {
+        setIsSaved(true);
+      } else {
+        alert('Failed to save property. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
   
   // Get images array - use images if available, fallback to single image, or default
   const propertyImages = property.images && property.images.length > 0 
@@ -149,10 +240,23 @@ export default function PropertyCard({ property, userRole, showActions = true, o
 
         {/* Favorite Button for Buyers */}
         {userRole === 'buyer' && (
-          <button className="absolute top-3 right-12 p-2 rounded-full bg-white/80 hover:bg-white transition-colors">
-            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+          <button 
+            onClick={handleSaveToggle}
+            disabled={saving}
+            className={`absolute top-3 right-12 p-2 rounded-full bg-white/80 hover:bg-white transition-all ${
+              saving ? 'opacity-50 cursor-not-allowed' : ''
+            } ${isSaved ? 'animate-pulse' : ''}`}
+            title={isSaved ? 'Remove from saved' : 'Save property'}
+          >
+            {isSaved ? (
+              <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+            )}
           </button>
         )}
       </div>
@@ -168,20 +272,20 @@ export default function PropertyCard({ property, userRole, showActions = true, o
         
         <div className="flex items-center gap-4 text-sm text-neutral-600 mb-3">
           <span className="flex items-center gap-1">
-            <span>🏠</span> {property.type}
+            <FaHome className="text-base" /> {property.type}
           </span>
           {property.bedrooms && (
             <span className="flex items-center gap-1">
-              <span>🛏️</span> {property.bedrooms} bed
+              <FaBed className="text-base" /> {property.bedrooms} bed
             </span>
           )}
           {property.bathrooms && (
             <span className="flex items-center gap-1">
-              <span>🚿</span> {property.bathrooms} bath
+              <FaShower className="text-base" /> {property.bathrooms} bath
             </span>
           )}
           <span className="flex items-center gap-1">
-            <span>📐</span> {property.area}
+            <FaRuler className="text-base" /> {property.area}
           </span>
         </div>
 
@@ -190,12 +294,12 @@ export default function PropertyCard({ property, userRole, showActions = true, o
           <div className="flex items-center gap-4 text-sm text-neutral-600 mb-3">
             {property.views && (
               <span className="flex items-center gap-1">
-                <span>👁️</span> {property.views} views
+                <FaEye className="text-base" /> {property.views} views
               </span>
             )}
             {property.inquiries && (
               <span className="flex items-center gap-1">
-                <span>💬</span> {property.inquiries} inquiries
+                <FaComments className="text-base" /> {property.inquiries} inquiries
               </span>
             )}
           </div>
@@ -205,17 +309,12 @@ export default function PropertyCard({ property, userRole, showActions = true, o
         {showActions && (
           <div className="flex gap-2 pt-3 border-t border-neutral-100">
             {userRole === 'buyer' && (
-              <>
-                <button className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-emerald-700 transition-colors">
-                  Contact Agent
-                </button>
-                <Link 
-                  href={`/property/${property.id}`}
-                  className="px-4 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors text-center"
-                >
-                  View Details
-                </Link>
-              </>
+              <Link 
+                href={`/property/${property.id}`}
+                className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-emerald-700 transition-colors text-center block"
+              >
+                Contact Seller
+              </Link>
             )}
             
             {(userRole === 'seller' || userRole === 'agent') && (
@@ -273,7 +372,9 @@ export default function PropertyCard({ property, userRole, showActions = true, o
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="text-center">
-              <div className="text-4xl mb-4">⚠️</div>
+              <div className="flex justify-center mb-4">
+                <FaExclamationTriangle className="text-4xl text-yellow-500" />
+              </div>
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">Delete Property</h3>
               <p className="text-neutral-600 mb-6">
                 Are you sure you want to delete "{property.title}"? This action cannot be undone.

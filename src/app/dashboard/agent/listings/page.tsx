@@ -5,6 +5,7 @@ import PropertyCard from "@/components/dashboard/PropertyCard";
 import AddPropertyModal from "@/components/dashboard/AddPropertyModal";
 import "@/api/clientConfig";
 import { PropertiesService } from "@/api/client";
+import { MdHome, MdCheckCircle, MdAccessTime, MdHandshake } from "react-icons/md";
 
 // Initial local sample data (used only as fallback if API returns nothing)
 const mockListings = [
@@ -157,7 +158,7 @@ const handleAddProperty = async (formData: FormData) => {
               <p className="text-2xl font-bold text-gray-900">{listings.length}</p>
             </div>
             <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              🏠
+              <MdHome className="text-blue-600" />
             </div>
           </div>
         </div>
@@ -170,7 +171,7 @@ const handleAddProperty = async (formData: FormData) => {
               </p>
             </div>
             <div className="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center">
-              ✅
+              <MdCheckCircle className="text-green-600" />
             </div>
           </div>
         </div>
@@ -183,7 +184,7 @@ const handleAddProperty = async (formData: FormData) => {
               </p>
             </div>
             <div className="h-8 w-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-              ⏳
+              <MdAccessTime className="text-yellow-600" />
             </div>
           </div>
         </div>
@@ -196,7 +197,7 @@ const handleAddProperty = async (formData: FormData) => {
               </p>
             </div>
             <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              🤝
+              <MdHandshake className="text-blue-600" />
             </div>
           </div>
         </div>

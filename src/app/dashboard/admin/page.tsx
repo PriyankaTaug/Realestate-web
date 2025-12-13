@@ -2,6 +2,14 @@
 
 import DashboardCard from "@/components/dashboard/DashboardCard";
 import PropertyCard from "@/components/dashboard/PropertyCard";
+import { 
+  MdPeople, 
+  MdHome, 
+  MdAttachMoney, 
+  MdFlashOn,
+  MdBarChart,
+  MdSettings
+} from "react-icons/md";
 
 // Mock data for demonstration
 const recentProperties = [
@@ -65,7 +73,7 @@ export default function AdminDashboard() {
 					value="2,847"
 					change="+12% this month"
 					changeType="positive"
-					icon="👥"
+					icon={<MdPeople className="text-4xl" />}
 					description="Platform users"
 				/>
 				<DashboardCard
@@ -73,7 +81,7 @@ export default function AdminDashboard() {
 					value="1,234"
 					change="+15% this month"
 					changeType="positive"
-					icon="🏠"
+					icon={<MdHome className="text-4xl" />}
 					description="Listed properties"
 				/>
 				<DashboardCard
@@ -81,7 +89,7 @@ export default function AdminDashboard() {
 					value="₹12.5L"
 					change="+18% this month"
 					changeType="positive"
-					icon="💰"
+					icon={<MdAttachMoney className="text-4xl" />}
 					description="Platform earnings"
 				/>
 				<DashboardCard
@@ -89,7 +97,7 @@ export default function AdminDashboard() {
 					value="99.9%"
 					change="Excellent uptime"
 					changeType="positive"
-					icon="⚡"
+					icon={<MdFlashOn className="text-4xl" />}
 					description="Server uptime"
 				/>
 			</div>
@@ -99,28 +107,28 @@ export default function AdminDashboard() {
 				<h2 className="text-lg font-semibold text-neutral-900 mb-4">Quick Actions</h2>
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 					<button className="flex items-center gap-3 p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-						<span className="text-2xl">👥</span>
+						<MdPeople className="text-2xl text-neutral-600" />
 						<div className="text-left">
 							<p className="font-medium text-neutral-900">Manage Users</p>
 							<p className="text-sm text-neutral-600">View all users</p>
 						</div>
 					</button>
 					<button className="flex items-center gap-3 p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-						<span className="text-2xl">🏠</span>
+						<MdHome className="text-2xl text-neutral-600" />
 						<div className="text-left">
 							<p className="font-medium text-neutral-900">Properties</p>
 							<p className="text-sm text-neutral-600">Review listings</p>
 						</div>
 					</button>
 					<button className="flex items-center gap-3 p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-						<span className="text-2xl">📊</span>
+						<MdBarChart className="text-2xl text-neutral-600" />
 						<div className="text-left">
 							<p className="font-medium text-neutral-900">Analytics</p>
 							<p className="text-sm text-neutral-600">View reports</p>
 						</div>
 					</button>
 					<button className="flex items-center gap-3 p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-						<span className="text-2xl">⚙️</span>
+						<MdSettings className="text-2xl text-neutral-600" />
 						<div className="text-left">
 							<p className="font-medium text-neutral-900">Settings</p>
 							<p className="text-sm text-neutral-600">System config</p>

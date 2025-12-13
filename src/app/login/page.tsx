@@ -1,10 +1,22 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import AuthForm from "@/components/auth-form";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+import dynamic from "next/dynamic";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AuthLayout from "@/components/auth-layout";
+
+// Dynamically import AuthForm to reduce initial bundle size
+const AuthForm = dynamic(() => import("@/components/auth-form"), {
+	ssr: false,
+	loading: () => (
+		<div className="space-y-4">
+			<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+			<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+			<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+		</div>
+	),
+});
 
 export default function LoginPage() {
 	return (
@@ -12,21 +24,17 @@ export default function LoginPage() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Login</CardTitle>
-					<CardDescription>Use the test credentials below to explore</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Alert>
-						<p className="font-semibold">Test credentials</p>
-						<ul className="mt-1 list-inside list-disc text-sm">
-							<li>Agent: agent@test.com / 123456 → /dashboard/agent</li>
-							<li>Seller: seller@test.com / 123456 → /dashboard/seller</li>
-							<li>Buyer: buyer@test.com / 123456 → /dashboard/buyer</li>
-							<li>Admin: admin@test.com / 123456 → /dashboard/admin</li>
-						</ul>
-					</Alert>
-
-					<div className="mt-4" />
-					<AuthForm mode="login" />
+					<Suspense fallback={
+						<div className="space-y-4">
+							<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+							<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+							<div className="h-10 w-full animate-pulse rounded-md bg-neutral-200"></div>
+						</div>
+					}>
+						<AuthForm mode="login" />
+					</Suspense>
 
 					<div className="mt-4 flex items-center justify-between text-sm">
 						<Link href="#forgot" className="text-emerald-700 hover:underline">Forgot Password?</Link>

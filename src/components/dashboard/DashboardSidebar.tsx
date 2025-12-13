@@ -3,6 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { 
+  MdDashboard, 
+  MdHome, 
+  MdPeople, 
+  MdBusiness, 
+  MdTrendingUp, 
+  MdSettings, 
+  MdMessage, 
+  MdPerson,
+  MdFavorite 
+} from "react-icons/md";
 
 type UserRole = 'agent' | 'admin' | 'seller' | 'buyer';
 
@@ -12,29 +23,27 @@ interface SidebarProps {
 
 const navigationConfig = {
   agent: [
-    { name: 'Dashboard', href: '/dashboard/agent', icon: '📊' },
-    { name: 'My Listings', href: '/dashboard/agent/listings', icon: '🏠' },
+    { name: 'Dashboard', href: '/dashboard/agent', icon: MdDashboard },
+    { name: 'My Listings', href: '/dashboard/agent/listings', icon: MdHome },
   ],
   admin: [
-    { name: 'Dashboard', href: '/dashboard/admin', icon: '📊' },
-    { name: 'Users', href: '/dashboard/admin/users', icon: '👥' },
-    { name: 'Properties', href: '/dashboard/admin/properties', icon: '🏠' },
-    { name: 'Agents', href: '/dashboard/admin/agents', icon: '🏢' },
-    { name: 'Reports', href: '/dashboard/admin/reports', icon: '📈' },
-    { name: 'Settings', href: '/dashboard/admin/settings', icon: '⚙️' },
+    { name: 'Dashboard', href: '/dashboard/admin', icon: MdDashboard },
+    { name: 'Users', href: '/dashboard/admin/users', icon: MdPeople },
+    { name: 'Properties', href: '/dashboard/admin/properties', icon: MdHome },
+    { name: 'Agents', href: '/dashboard/admin/agents', icon: MdBusiness },
+    { name: 'Reports', href: '/dashboard/admin/reports', icon: MdTrendingUp },
+    { name: 'Settings', href: '/dashboard/admin/settings', icon: MdSettings },
   ],
   seller: [
-    { name: 'Dashboard', href: '/dashboard/seller', icon: '📊' },
-    { name: 'My Properties', href: '/dashboard/seller/properties', icon: '🏠' },
-    { name: 'Inquiries', href: '/dashboard/seller/inquiries', icon: '💬' },
-    { name: 'Profile', href: '/dashboard/seller/profile', icon: '👤' },
+    { name: 'Dashboard', href: '/dashboard/seller', icon: MdDashboard },
+    { name: 'My Properties', href: '/dashboard/seller/properties', icon: MdHome },
+    { name: 'Inquiries', href: '/dashboard/seller/inquiries', icon: MdMessage },
+    { name: 'Profile', href: '/dashboard/seller/profile', icon: MdPerson },
   ],
   buyer: [
-    { name: 'Dashboard', href: '/dashboard/buyer', icon: '📊' },
-    { name: 'Saved Properties', href: '/dashboard/buyer/saved', icon: '❤️' },
-    { name: 'Search History', href: '/dashboard/buyer/history', icon: '🔍' },
-    { name: 'Appointments', href: '/dashboard/buyer/appointments', icon: '📅' },
-    { name: 'Profile', href: '/dashboard/buyer/profile', icon: '👤' },
+    { name: 'Dashboard', href: '/dashboard/buyer', icon: MdDashboard },
+    { name: 'Saved Properties', href: '/dashboard/buyer/saved', icon: MdFavorite },
+    { name: 'Profile', href: '/dashboard/buyer/profile', icon: MdPerson },
   ],
 };
 
@@ -92,7 +101,7 @@ export default function DashboardSidebar({ userRole }: SidebarProps) {
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <item.icon className="text-lg" />
                   {item.name}
                 </Link>
               );

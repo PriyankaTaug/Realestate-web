@@ -9,6 +9,7 @@ export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { Body_create_property_api_properties__post } from './models/Body_create_property_api_properties__post';
 export type { HTTPValidationError } from './models/HTTPValidationError';
+export type { PaginatedProperties } from './models/PaginatedProperties';
 export type { PropertyImage } from './models/PropertyImage';
 export type { PropertyOut } from './models/PropertyOut';
 export type { PropertyUpdate } from './models/PropertyUpdate';

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { FaHome, FaExclamationTriangle } from "react-icons/fa";
+import { MdAccessTime } from "react-icons/md";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import "@/api/clientConfig";
@@ -252,7 +254,9 @@ export default function EditProperty() {
       <div className="space-y-6">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="text-4xl mb-4">⏳</div>
+            <div className="flex justify-center mb-4">
+              <MdAccessTime className="text-4xl text-neutral-400" />
+            </div>
             <p className="text-neutral-600">Loading property details...</p>
           </div>
         </div>
@@ -583,7 +587,9 @@ export default function EditProperty() {
             </div>
           ) : (
             <div className="text-center py-8 bg-neutral-50 rounded-lg">
-              <div className="text-4xl mb-2">🏠</div>
+              <div className="flex justify-center mb-2">
+                <FaHome className="text-4xl text-neutral-400" />
+              </div>
               <p className="text-neutral-600 mb-2">No images available</p>
             </div>
           )}
@@ -612,7 +618,9 @@ export default function EditProperty() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="text-center">
-              <div className="text-4xl mb-4">⚠️</div>
+              <div className="flex justify-center mb-4">
+                <FaExclamationTriangle className="text-4xl text-yellow-500" />
+              </div>
               <h3 className="text-lg font-semibold text-neutral-900 mb-2">Delete Property</h3>
               <p className="text-neutral-600 mb-6">
                 Are you sure you want to delete this property? This action cannot be undone.

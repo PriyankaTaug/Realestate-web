@@ -93,11 +93,18 @@ apiClient.interceptors.response.use(
       console.error(errorMessage);
     } else if (error.response) {
       // Server responded with error status
+      const errorData = error.response.data;
+      const errorDetail = typeof errorData === 'object' && errorData !== null
+        ? (errorData.detail || errorData.message || JSON.stringify(errorData))
+        : String(errorData || 'Unknown error');
+      
       console.error("[API Response Error]", {
         status: error.response.status,
         statusText: error.response.statusText,
-        data: error.response.data,
+        detail: errorDetail,
+        data: errorData,
         url: error.config?.url,
+        method: error.config?.method,
       });
     } else if (error.request) {
       // Request was made but no response received

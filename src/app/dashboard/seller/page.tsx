@@ -10,6 +10,16 @@ import { PropertiesService } from "@/api/client";
 import { AuthService } from "@/api/client";
 import { OpenAPI } from "@/api/client/core/OpenAPI";
 import { useToast } from "@/components/ui/toast";
+import { 
+  MdHome, 
+  MdVisibility, 
+  MdMessage, 
+  MdAttachMoney,
+  MdBarChart,
+  MdCheckCircle,
+  MdTrendingUp
+} from "react-icons/md";
+import { FaHome } from "react-icons/fa";
 
 export default function SellerDashboard() {
 	const { show } = useToast();
@@ -17,6 +27,7 @@ export default function SellerDashboard() {
 	const [properties, setProperties] = useState<any[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [userName, setUserName] = useState("Seller");
+	const [user, setUser] = useState<any>(null);
 	const [stats, setStats] = useState({
 		activeListings: 0,
 		totalProperties: 0,
@@ -26,9 +37,33 @@ export default function SellerDashboard() {
 		soldProperties: 0
 	});
 
-	// Fetch user info and properties
+	// Fetch user info first
+	useEffect(() => {
+		const fetchUser = async () => {
+			try {
+				if (typeof window !== 'undefined') {
+					const token = localStorage.getItem('kh_token');
+					if (token) {
+						OpenAPI.TOKEN = token;
+						const userData = await AuthService.readMeApiAuthMeGet();
+						setUser(userData);
+						if (userData?.full_name) {
+							setUserName(userData.full_name.split(' ')[0]); // Get first name
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch user data', error);
+			}
+		};
+		fetchUser();
+	}, []);
+
+	// Fetch properties for the logged-in seller
 	useEffect(() => {
 		const fetchData = async () => {
+			if (!user) return; // Wait for user to be loaded
+			
 			try {
 				setLoading(true);
 				
@@ -37,23 +72,30 @@ export default function SellerDashboard() {
 					const token = localStorage.getItem('kh_token');
 					if (token) {
 						OpenAPI.TOKEN = token;
-						
-						// Try to get user info
-						try {
-							const user = await AuthService.readMeApiAuthMeGet();
-							if (user?.full_name) {
-								setUserName(user.full_name.split(' ')[0]); // Get first name
-							}
-						} catch (err) {
-							console.log('Could not fetch user info:', err);
-						}
 					}
 				}
 
-				// Fetch properties
-				const data = await PropertiesService.listPropertiesApiPropertiesGet(0, 100);
+				// Fetch all properties (we'll filter by owner_id on frontend)
+				const response = await PropertiesService.listPropertiesApiPropertiesGet(
+					0, 
+					100, // Get more properties to ensure we get all seller's properties
+					undefined, // bedrooms
+					undefined, // bathrooms
+					undefined, // city
+					undefined, // district
+					undefined, // state
+					undefined, // neighborhood
+					undefined, // type
+					undefined, // listed_type
+					undefined, // status (get all statuses for seller)
+				);
 				
-				if (data && data.length > 0) {
+				const data = response.items || [];
+				
+				// Filter properties by owner_id on frontend
+				const sellerProperties = data.filter((p: any) => p.owner_id === user.id);
+				
+				if (sellerProperties.length > 0) {
 					// Helper function to construct full image URL
 					const getImageUrl = (imagePath: string | undefined | null) => {
 						if (!imagePath) return undefined;
@@ -65,7 +107,7 @@ export default function SellerDashboard() {
 						return `${baseUrl}${cleanPath}`;
 					};
 					
-					const mapped = data.map((p) => {
+					const mapped = sellerProperties.map((p: any) => {
 						const imageUrls = p.images && p.images.length > 0
 							? p.images.map(img => getImageUrl(img.image_url)).filter(Boolean) as string[]
 							: [];
@@ -115,6 +157,17 @@ export default function SellerDashboard() {
 						portfolioValue,
 						soldProperties
 					});
+				} else {
+					// No properties found for this seller
+					setProperties([]);
+					setStats({
+						activeListings: 0,
+						totalProperties: 0,
+						totalViews: 0,
+						totalInquiries: 0,
+						portfolioValue: 0,
+						soldProperties: 0
+					});
 				}
 			} catch (error: any) {
 				console.error('Failed to load dashboard data', error);
@@ -129,7 +182,7 @@ export default function SellerDashboard() {
 		};
 
 		fetchData();
-	}, []);
+	}, [user]);
 
 	const handleAddProperty = async (formData: FormData) => {
 		try {
@@ -394,7 +447,7 @@ export default function SellerDashboard() {
 					value={stats.activeListings}
 					change={stats.totalProperties > 0 ? `${stats.activeListings} of ${stats.totalProperties} properties` : "No properties yet"}
 					changeType="neutral"
-					icon="🏠"
+					icon={<MdHome className="text-4xl" />}
 					description="Properties currently for sale"
 				/>
 				<DashboardCard
@@ -402,7 +455,7 @@ export default function SellerDashboard() {
 					value={stats.totalViews.toLocaleString('en-IN')}
 					change={stats.totalViews > 0 ? "Across all properties" : "No views yet"}
 					changeType="neutral"
-					icon="👁️"
+					icon={<MdVisibility className="text-4xl" />}
 					description="Property views"
 				/>
 				<DashboardCard
@@ -410,7 +463,7 @@ export default function SellerDashboard() {
 					value={stats.totalInquiries}
 					change={stats.totalInquiries > 0 ? "Buyer inquiries received" : "No inquiries yet"}
 					changeType="neutral"
-					icon="💬"
+					icon={<MdMessage className="text-4xl" />}
 					description="Buyer inquiries"
 				/>
 				<DashboardCard
@@ -418,7 +471,7 @@ export default function SellerDashboard() {
 					value={formatPortfolioValue(stats.portfolioValue)}
 					change={stats.activeListings > 0 ? `${stats.activeListings} active properties` : "No active listings"}
 					changeType="neutral"
-					icon="💰"
+					icon={<MdAttachMoney className="text-4xl" />}
 					description="Total active property value"
 				/>
 			</div>
@@ -428,7 +481,7 @@ export default function SellerDashboard() {
 				<div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
 					<div className="flex items-center gap-3">
 						<div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-							<span className="text-blue-600 text-lg">📊</span>
+							<MdBarChart className="text-blue-600 text-lg" />
 						</div>
 						<div>
 							<p className="text-sm text-neutral-600">Total Properties</p>
@@ -439,7 +492,7 @@ export default function SellerDashboard() {
 				<div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
 					<div className="flex items-center gap-3">
 						<div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-							<span className="text-green-600 text-lg">✅</span>
+							<MdCheckCircle className="text-green-600 text-lg" />
 						</div>
 						<div>
 							<p className="text-sm text-neutral-600">Sold Properties</p>
@@ -450,8 +503,8 @@ export default function SellerDashboard() {
 				<div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
 					<div className="flex items-center gap-3">
 						<div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-							<span className="text-purple-600 text-lg">📈</span>
-							</div>
+							<MdTrendingUp className="text-purple-600 text-lg" />
+						</div>
 						<div>
 							<p className="text-sm text-neutral-600">Avg. Views/Property</p>
 							<p className="text-xl font-bold text-neutral-900">
@@ -497,7 +550,9 @@ export default function SellerDashboard() {
 				</div>
 				) : (
 					<div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-12 text-center">
-						<div className="text-6xl mb-4">🏠</div>
+						<div className="flex justify-center mb-4">
+							<FaHome className="text-6xl text-neutral-400" />
+						</div>
 						<h3 className="text-lg font-semibold text-neutral-900 mb-2">
 							No properties yet
 						</h3>

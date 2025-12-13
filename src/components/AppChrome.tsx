@@ -1,6 +1,6 @@
 "use client";
 
-import { PropsWithChildren, useEffect } from "react";
+import { PropsWithChildren, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -8,6 +8,16 @@ import Footer from "@/components/Footer";
 export default function AppChrome({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const isDashboard = pathname.startsWith("/dashboard");
+  const isPropertyPage = pathname.startsWith("/property/");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if user is logged in
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('kh_token');
+      setIsLoggedIn(!!token);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     // Handle unhandled promise rejections to prevent console errors
@@ -37,6 +47,12 @@ export default function AppChrome({ children }: PropsWithChildren) {
 
   if (isDashboard) {
     // Dashboard renders its own header/sidebar; do not render public header/footer
+    return <>{children}</>;
+  }
+
+  // If user is logged in and viewing a property page, don't show public header/footer
+  // (property page will show dashboard header/sidebar)
+  if (isPropertyPage && isLoggedIn) {
     return <>{children}</>;
   }
 

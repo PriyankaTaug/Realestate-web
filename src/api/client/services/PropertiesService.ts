@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { Body_create_property_api_properties__post } from '../models/Body_create_property_api_properties__post';
+import type { PaginatedProperties } from '../models/PaginatedProperties';
 import type { PropertyOut } from '../models/PropertyOut';
 import type { PropertyUpdate } from '../models/PropertyUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -13,19 +14,46 @@ export class PropertiesService {
      * List Properties
      * @param skip
      * @param limit
-     * @returns PropertyOut Successful Response
+     * @param bedrooms
+     * @param bathrooms
+     * @param city
+     * @param district
+     * @param state
+     * @param neighborhood
+     * @param type
+     * @param listedType
+     * @param status
+     * @returns PaginatedProperties Successful Response
      * @throws ApiError
      */
     public static listPropertiesApiPropertiesGet(
         skip?: number,
-        limit: number = 50,
-    ): CancelablePromise<Array<PropertyOut>> {
+        limit: number = 12,
+        bedrooms?: number,
+        bathrooms?: number,
+        city?: string,
+        district?: string,
+        state?: string,
+        neighborhood?: string,
+        type?: string,
+        listedType?: string,
+        status: string = 'active',
+    ): CancelablePromise<PaginatedProperties> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/properties/',
             query: {
                 'skip': skip,
                 'limit': limit,
+                'bedrooms': bedrooms,
+                'bathrooms': bathrooms,
+                'city': city,
+                'district': district,
+                'state': state,
+                'neighborhood': neighborhood,
+                'type': type,
+                'listed_type': listedType,
+                'status': status,
             },
             errors: {
                 422: `Validation Error`,
